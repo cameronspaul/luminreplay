@@ -481,10 +481,10 @@ app.whenReady().then(async () => {
   // Initialize Settings first (so IPC handlers are ready)
   SettingsManager.getInstance()
 
-  // Open Debug Console in production/built app
-  if (!VITE_DEV_SERVER_URL) {
-    createDebugWindow()
-  }
+  // // Open Debug Console in production/built app
+  // if (!VITE_DEV_SERVER_URL) {
+  //   createDebugWindow()
+  // }
 
   // Check if OBS is available (checks for missing dependencies like VC++ Redist)
   const obsManager = OBSManager.getInstance()
