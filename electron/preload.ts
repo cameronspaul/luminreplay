@@ -50,4 +50,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Cancel save
   cancelSave: () => ipcRenderer.invoke('cancel-save'),
+
+  // Open External Link
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 })

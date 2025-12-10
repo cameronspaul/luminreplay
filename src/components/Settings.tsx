@@ -256,6 +256,16 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </div>
 
             <div className="settings-content">
+                <button
+                    className="settings-coffee-btn"
+                    onClick={() => {
+                        // @ts-ignore
+                        window.electronAPI?.openExternal('https://buymeacoffee.com/cameronpaul');
+                    }}
+                >
+                    ☕ Buy me a coffee
+                </button>
+
                 {/* System Section */}
                 <section className="settings-section">
                     <h2>System</h2>

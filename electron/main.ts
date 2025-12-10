@@ -684,6 +684,10 @@ app.whenReady().then(async () => {
     }
   })
 
+  ipcMain.handle('open-external', async (_event, url) => {
+    await shell.openExternal(url)
+  })
+
 
   console.log('LuminReplay is running in the system tray')
 })
