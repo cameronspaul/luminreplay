@@ -4,6 +4,7 @@ import fs from 'fs';
 import ffmpeg from 'fluent-ffmpeg';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
+import SettingsManager from './settings';
 
 const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
@@ -78,6 +79,35 @@ export class OBSManager {
         ipcMain.handle('obs-save-replay', async () => {
             return await this.saveReplayBuffer();
         });
+
+        // Handle settings change - restart replay buffer with new settings
+        ipcMain.handle('obs-restart', async () => {
+            console.log('Restarting OBS with new settings...');
+            await this.restartWithNewSettings();
+            return { success: true };
+        });
+    }
+
+    /**
+     * Restart the replay buffer with new settings
+     */
+    public async restartWithNewSettings() {
+        if (!this.initialized || !obs) return;
+
+        // Stop replay buffer if running
+        if (this.replayBufferRunning) {
+            console.log('Stopping replay buffer for settings update...');
+            obs.NodeObs.OBS_service_stopReplayBuffer(false);
+            // Wait a bit for it to stop
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        // Re-apply settings
+        this.setupVideo();
+        this.setupOutput();
+
+        // Restart replay buffer
+        this.startReplayBuffer();
     }
 
     public initialize() {
@@ -86,7 +116,7 @@ export class OBSManager {
         console.log("Initializing OBS...");
 
         // Host IPC for OBS
-        obs.NodeObs.IPC.host(`shadowplay-clone-${process.pid}`);
+        obs.NodeObs.IPC.host(`luminreplay-${process.pid}`);
 
         // Set working directory - critical for loading plugins
         // This path depends on where the module is installed.
@@ -180,6 +210,9 @@ export class OBSManager {
     private setupVideo() {
         if (!this.initialized) return;
 
+        // Get settings
+        const settings = SettingsManager.getInstance().getAllSettings();
+
         // Detect total screen size
         const displays = screen.getAllDisplays();
 
@@ -196,7 +229,7 @@ export class OBSManager {
         const totalWidth = maxX - minX;
         const totalHeight = maxY - minY;
 
-        console.log(`Configuring OBS Video: ${totalWidth}x${totalHeight}`);
+        console.log(`Configuring OBS Video: ${totalWidth}x${totalHeight} @ ${settings.fps}fps`);
 
         try {
             // Get current video settings using the correct API
@@ -204,8 +237,8 @@ export class OBSManager {
             const videoSettings = videoSettingsResult?.data || [];
 
             // Helper function to update a setting value in the OBS settings structure
-            const updateSetting = (settings: any[], paramName: string, value: any) => {
-                for (const category of settings) {
+            const updateSetting = (settingsArr: any[], paramName: string, value: any) => {
+                for (const category of settingsArr) {
                     if (category.parameters) {
                         for (const param of category.parameters) {
                             if (param.name === paramName) {
@@ -224,9 +257,9 @@ export class OBSManager {
             updateSetting(videoSettings, 'Base', `${totalWidth}x${totalHeight}`);
             // Output (scaled) resolution
             updateSetting(videoSettings, 'Output', `${totalWidth}x${totalHeight}`);
-            // FPS settings
+            // FPS settings - use value from settings
             updateSetting(videoSettings, 'FPSType', 'Common FPS Values');
-            updateSetting(videoSettings, 'FPSCommon', '60');
+            updateSetting(videoSettings, 'FPSCommon', String(settings.fps));
 
             // Save video settings
             obs.NodeObs.OBS_settings_saveSettings('Video', videoSettings);
@@ -252,15 +285,23 @@ export class OBSManager {
     private setupOutput() {
         if (!this.initialized || !obs) return;
 
+        // Get settings from SettingsManager
+        const settings = SettingsManager.getInstance().getAllSettings();
+
         console.log("Configuring output settings...");
+        console.log(`  - Replay Buffer Duration: ${settings.replayBufferDuration}s`);
+        console.log(`  - Replay Buffer Max Size: ${settings.replayBufferMaxSize}MB`);
+        console.log(`  - Video Bitrate: ${settings.videoBitrate}kbps`);
+        console.log(`  - Recording Format: ${settings.recordingFormat}`);
+        console.log(`  - Recording Path: ${settings.recordingPath}`);
 
         try {
             // Get output settings
             const outputSettingsResult = obs.NodeObs.OBS_settings_getSettings('Output');
             const outputSettings = outputSettingsResult?.data || [];
 
-            const updateSetting = (settings: any[], paramName: string, value: any) => {
-                for (const category of settings) {
+            const updateSetting = (settingsArr: any[], paramName: string, value: any) => {
+                for (const category of settingsArr) {
                     if (category.parameters) {
                         for (const param of category.parameters) {
                             if (param.name === paramName) {
@@ -277,24 +318,30 @@ export class OBSManager {
             // Set output mode to Simple
             updateSetting(outputSettings, 'Mode', 'Simple');
 
-            // Configure recording path
-            const recordingPath = path.join(app.getPath('videos'), 'ShadowPlay');
+            // Configure recording path from settings
+            const recordingPath = settings.recordingPath || path.join(app.getPath('videos'), 'LuminReplay');
             if (!fs.existsSync(recordingPath)) {
                 fs.mkdirSync(recordingPath, { recursive: true });
             }
             updateSetting(outputSettings, 'FilePath', recordingPath);
 
-            // Set recording format
-            updateSetting(outputSettings, 'RecFormat', 'mp4');
+            // Set recording format from settings
+            updateSetting(outputSettings, 'RecFormat', settings.recordingFormat);
+
+            // Set video bitrate from settings
+            updateSetting(outputSettings, 'VBitrate', settings.videoBitrate);
+
+            // Set encoder quality (higher bitrate = higher quality)
+            updateSetting(outputSettings, 'RecQuality', 'Stream');
 
             // Enable replay buffer
             updateSetting(outputSettings, 'RecRB', true);
 
-            // Set replay buffer duration (30 seconds)
-            updateSetting(outputSettings, 'RecRBTime', 30);
+            // Set replay buffer duration from settings
+            updateSetting(outputSettings, 'RecRBTime', settings.replayBufferDuration);
 
-            // Set replay buffer max size (512 MB)
-            updateSetting(outputSettings, 'RecRBSize', 512);
+            // Set replay buffer max size from settings
+            updateSetting(outputSettings, 'RecRBSize', settings.replayBufferMaxSize);
 
             // Save output settings
             obs.NodeObs.OBS_settings_saveSettings('Output', outputSettings);

@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { ipcMain, app, screen, globalShortcut, BrowserWindow } from "electron";
+import { app, ipcMain, dialog, screen, globalShortcut, BrowserWindow, Menu, nativeImage, Tray, shell } from "electron";
 import { createRequire as createRequire$1 } from "node:module";
 import { fileURLToPath as fileURLToPath$1 } from "node:url";
 import path$3 from "node:path";
@@ -3360,6 +3360,118 @@ FfmpegCommand.ffprobe = function(file) {
 requireRecipes()(FfmpegCommand.prototype);
 var fluentFfmpeg = fluentFfmpeg$1;
 const ffmpeg = /* @__PURE__ */ getDefaultExportFromCjs(fluentFfmpeg);
+const defaultSettings = {
+  replayBufferDuration: 30,
+  replayBufferMaxSize: 512,
+  videoBitrate: 12e3,
+  fps: 60,
+  recordingFormat: "mp4",
+  recordingPath: "",
+  // Will be set on first run
+  captureDesktopAudio: true,
+  captureMicrophone: true,
+  replayHotkey: "Alt+F10"
+};
+const _SettingsManager = class _SettingsManager {
+  constructor() {
+    __publicField(this, "settings");
+    __publicField(this, "settingsPath");
+    const userDataPath = app.getPath("userData");
+    this.settingsPath = path$2.join(userDataPath, "luminreplay-settings.json");
+    this.settings = this.loadSettings();
+    if (!this.settings.recordingPath) {
+      const videosPath = app.getPath("videos");
+      this.settings.recordingPath = path$2.join(videosPath, "LuminReplay");
+      this.saveSettings();
+    }
+    this.initIPC();
+  }
+  loadSettings() {
+    try {
+      if (fs.existsSync(this.settingsPath)) {
+        const data = fs.readFileSync(this.settingsPath, "utf-8");
+        const loaded = JSON.parse(data);
+        return { ...defaultSettings, ...loaded };
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    }
+    return { ...defaultSettings };
+  }
+  saveSettings() {
+    try {
+      const dir = path$2.dirname(this.settingsPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(this.settingsPath, JSON.stringify(this.settings, null, 2));
+    } catch (error) {
+      console.error("Error saving settings:", error);
+    }
+  }
+  static getInstance() {
+    if (!_SettingsManager.instance) {
+      _SettingsManager.instance = new _SettingsManager();
+    }
+    return _SettingsManager.instance;
+  }
+  initIPC() {
+    ipcMain.handle("settings-get-all", () => {
+      return this.getAllSettings();
+    });
+    ipcMain.handle("settings-get", (_, key) => {
+      return this.getSetting(key);
+    });
+    ipcMain.handle("settings-set", (_, key, value) => {
+      return this.setSetting(key, value);
+    });
+    ipcMain.handle("settings-set-multiple", (_, settings) => {
+      return this.setMultipleSettings(settings);
+    });
+    ipcMain.handle("settings-reset", () => {
+      return this.resetToDefaults();
+    });
+    ipcMain.handle("settings-pick-folder", async () => {
+      const result = await dialog.showOpenDialog({
+        properties: ["openDirectory"],
+        title: "Select Recording Folder"
+      });
+      if (!result.canceled && result.filePaths.length > 0) {
+        this.setSetting("recordingPath", result.filePaths[0]);
+        return result.filePaths[0];
+      }
+      return null;
+    });
+  }
+  getAllSettings() {
+    return { ...this.settings };
+  }
+  getSetting(key) {
+    return this.settings[key];
+  }
+  setSetting(key, value) {
+    this.settings[key] = value;
+    this.saveSettings();
+    return { ...this.settings };
+  }
+  setMultipleSettings(settings) {
+    for (const [key, value] of Object.entries(settings)) {
+      if (key in defaultSettings) {
+        this.settings[key] = value;
+      }
+    }
+    this.saveSettings();
+    return { ...this.settings };
+  }
+  resetToDefaults() {
+    const currentPath = this.settings.recordingPath;
+    this.settings = { ...defaultSettings, recordingPath: currentPath };
+    this.saveSettings();
+    return { ...this.settings };
+  }
+};
+__publicField(_SettingsManager, "instance");
+let SettingsManager = _SettingsManager;
 const require$1 = createRequire(import.meta.url);
 const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$2 = path$2.dirname(__filename$1);
@@ -3389,11 +3501,30 @@ const _OBSManager = class _OBSManager {
     ipcMain.handle("obs-save-replay", async () => {
       return await this.saveReplayBuffer();
     });
+    ipcMain.handle("obs-restart", async () => {
+      console.log("Restarting OBS with new settings...");
+      await this.restartWithNewSettings();
+      return { success: true };
+    });
+  }
+  /**
+   * Restart the replay buffer with new settings
+   */
+  async restartWithNewSettings() {
+    if (!this.initialized || !obs) return;
+    if (this.replayBufferRunning) {
+      console.log("Stopping replay buffer for settings update...");
+      obs.NodeObs.OBS_service_stopReplayBuffer(false);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    this.setupVideo();
+    this.setupOutput();
+    this.startReplayBuffer();
   }
   initialize() {
     if (this.initialized || !obs) return;
     console.log("Initializing OBS...");
-    obs.NodeObs.IPC.host(`shadowplay-clone-${process.pid}`);
+    obs.NodeObs.IPC.host(`luminreplay-${process.pid}`);
     const obsPath = path$2.join(process.cwd(), "node_modules", "obs-studio-node");
     obs.NodeObs.SetWorkingDirectory(obsPath);
     const userDataPath = app.getPath("userData");
@@ -3464,6 +3595,7 @@ const _OBSManager = class _OBSManager {
   }
   setupVideo() {
     if (!this.initialized) return;
+    const settings = SettingsManager.getInstance().getAllSettings();
     const displays = screen.getAllDisplays();
     let minX = 0, minY = 0, maxX = 0, maxY = 0;
     displays.forEach((d, i) => {
@@ -3474,12 +3606,12 @@ const _OBSManager = class _OBSManager {
     });
     const totalWidth = maxX - minX;
     const totalHeight = maxY - minY;
-    console.log(`Configuring OBS Video: ${totalWidth}x${totalHeight}`);
+    console.log(`Configuring OBS Video: ${totalWidth}x${totalHeight} @ ${settings.fps}fps`);
     try {
       const videoSettingsResult = obs.NodeObs.OBS_settings_getSettings("Video");
       const videoSettings = (videoSettingsResult == null ? void 0 : videoSettingsResult.data) || [];
-      const updateSetting = (settings, paramName, value) => {
-        for (const category of settings) {
+      const updateSetting = (settingsArr, paramName, value) => {
+        for (const category of settingsArr) {
           if (category.parameters) {
             for (const param of category.parameters) {
               if (param.name === paramName) {
@@ -3495,7 +3627,7 @@ const _OBSManager = class _OBSManager {
       updateSetting(videoSettings, "Base", `${totalWidth}x${totalHeight}`);
       updateSetting(videoSettings, "Output", `${totalWidth}x${totalHeight}`);
       updateSetting(videoSettings, "FPSType", "Common FPS Values");
-      updateSetting(videoSettings, "FPSCommon", "60");
+      updateSetting(videoSettings, "FPSCommon", String(settings.fps));
       obs.NodeObs.OBS_settings_saveSettings("Video", videoSettings);
       console.log("Video settings configured successfully");
       const audioSettingsResult = obs.NodeObs.OBS_settings_getSettings("Audio");
@@ -3513,12 +3645,18 @@ const _OBSManager = class _OBSManager {
    */
   setupOutput() {
     if (!this.initialized || !obs) return;
+    const settings = SettingsManager.getInstance().getAllSettings();
     console.log("Configuring output settings...");
+    console.log(`  - Replay Buffer Duration: ${settings.replayBufferDuration}s`);
+    console.log(`  - Replay Buffer Max Size: ${settings.replayBufferMaxSize}MB`);
+    console.log(`  - Video Bitrate: ${settings.videoBitrate}kbps`);
+    console.log(`  - Recording Format: ${settings.recordingFormat}`);
+    console.log(`  - Recording Path: ${settings.recordingPath}`);
     try {
       const outputSettingsResult = obs.NodeObs.OBS_settings_getSettings("Output");
       const outputSettings = (outputSettingsResult == null ? void 0 : outputSettingsResult.data) || [];
-      const updateSetting = (settings, paramName, value) => {
-        for (const category of settings) {
+      const updateSetting = (settingsArr, paramName, value) => {
+        for (const category of settingsArr) {
           if (category.parameters) {
             for (const param of category.parameters) {
               if (param.name === paramName) {
@@ -3532,15 +3670,17 @@ const _OBSManager = class _OBSManager {
         return false;
       };
       updateSetting(outputSettings, "Mode", "Simple");
-      const recordingPath = path$2.join(app.getPath("videos"), "ShadowPlay");
+      const recordingPath = settings.recordingPath || path$2.join(app.getPath("videos"), "LuminReplay");
       if (!fs.existsSync(recordingPath)) {
         fs.mkdirSync(recordingPath, { recursive: true });
       }
       updateSetting(outputSettings, "FilePath", recordingPath);
-      updateSetting(outputSettings, "RecFormat", "mp4");
+      updateSetting(outputSettings, "RecFormat", settings.recordingFormat);
+      updateSetting(outputSettings, "VBitrate", settings.videoBitrate);
+      updateSetting(outputSettings, "RecQuality", "Stream");
       updateSetting(outputSettings, "RecRB", true);
-      updateSetting(outputSettings, "RecRBTime", 30);
-      updateSetting(outputSettings, "RecRBSize", 512);
+      updateSetting(outputSettings, "RecRBTime", settings.replayBufferDuration);
+      updateSetting(outputSettings, "RecRBSize", settings.replayBufferMaxSize);
       obs.NodeObs.OBS_settings_saveSettings("Output", outputSettings);
       console.log("Output settings configured. Replay path:", recordingPath);
     } catch (error) {
@@ -3751,12 +3891,22 @@ const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = path$3.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = path$3.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$3.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win;
+let win = null;
 let overlayWindow = null;
+let tray = null;
 let lastReplayPath = null;
+let isQuitting = false;
 function createWindow() {
+  Menu.setApplicationMenu(null);
   win = new BrowserWindow({
     icon: path$3.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    width: 450,
+    height: 670,
+    resizable: false,
+    show: false,
+    // Start hidden
+    autoHideMenuBar: true,
+    // Hide the menu bar
     webPreferences: {
       preload: path$3.join(__dirname$1, "preload.mjs")
     }
@@ -3764,17 +3914,118 @@ function createWindow() {
   win.webContents.on("did-finish-load", () => {
     win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
   });
+  win.on("close", (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      win == null ? void 0 : win.hide();
+    }
+  });
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
     win.loadFile(path$3.join(RENDERER_DIST, "index.html"));
   }
 }
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-    win = null;
+function createTray() {
+  const iconPath = path$3.join(process.env.VITE_PUBLIC, "tray-icon.png");
+  let trayIcon;
+  try {
+    trayIcon = nativeImage.createFromPath(iconPath);
+    if (!trayIcon.isEmpty()) {
+      trayIcon = trayIcon.resize({ width: 16, height: 16 });
+    }
+  } catch {
+    trayIcon = nativeImage.createEmpty();
   }
+  tray = new Tray(trayIcon);
+  tray.setToolTip("LuminReplay - Recording");
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: "LuminReplay",
+      enabled: false
+    },
+    { type: "separator" },
+    {
+      label: "Replay Buffer Active",
+      enabled: false
+    },
+    { type: "separator" },
+    {
+      label: "Save Replay (Alt+F10)",
+      click: async () => {
+        try {
+          lastReplayPath = await OBSManager.getInstance().saveReplayBuffer();
+          showOverlay();
+        } catch (err) {
+          console.error("Failed to save replay:", err);
+        }
+      }
+    },
+    { type: "separator" },
+    {
+      label: "Settings",
+      click: () => {
+        if (win) {
+          win.show();
+          win.focus();
+        }
+      }
+    },
+    {
+      label: "Open Recordings Folder",
+      click: () => {
+        const settings = SettingsManager.getInstance().getAllSettings();
+        shell.openPath(settings.recordingPath);
+      }
+    },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+  tray.setContextMenu(contextMenu);
+  tray.on("click", () => {
+    if (win) {
+      win.show();
+      win.focus();
+    }
+  });
+  tray.on("double-click", () => {
+    if (win) {
+      win.show();
+      win.focus();
+    }
+  });
+}
+function showOverlay() {
+  if (overlayWindow) {
+    overlayWindow.focus();
+    return;
+  }
+  overlayWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      preload: path$3.join(__dirname$1, "preload.mjs")
+    }
+  });
+  if (VITE_DEV_SERVER_URL) {
+    overlayWindow.loadURL(`${VITE_DEV_SERVER_URL}?overlay=true`);
+  } else {
+    overlayWindow.loadURL(`file://${path$3.join(RENDERER_DIST, "index.html")}?overlay=true`);
+  }
+  overlayWindow.on("closed", () => {
+    overlayWindow = null;
+  });
+}
+app.on("window-all-closed", () => {
 });
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
@@ -3785,39 +4036,35 @@ app.on("activate", () => {
     createWindow();
   }
 });
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (win) {
+      win.show();
+      win.focus();
+    }
+  });
+}
 app.whenReady().then(() => {
+  SettingsManager.getInstance();
   createWindow();
+  createTray();
   OBSManager.getInstance().initialize();
   const ret = globalShortcut.register("Alt+F10", async () => {
     console.log("Alt+F10 is pressed");
-    lastReplayPath = await OBSManager.getInstance().saveReplayBuffer();
-    if (overlayWindow) {
-      overlayWindow.focus();
-      return;
+    try {
+      lastReplayPath = await OBSManager.getInstance().saveReplayBuffer();
+      showOverlay();
+    } catch (err) {
+      console.error("Failed to save replay:", err);
     }
-    overlayWindow = new BrowserWindow({
-      width: 800,
-      height: 600,
-      frame: false,
-      transparent: true,
-      alwaysOnTop: true,
-      webPreferences: {
-        preload: path$3.join(__dirname$1, "preload.mjs")
-      }
-    });
-    if (VITE_DEV_SERVER_URL) {
-      overlayWindow.loadURL(`${VITE_DEV_SERVER_URL}?overlay=true`);
-    } else {
-      overlayWindow.loadURL(`file://${path$3.join(RENDERER_DIST, "index.html")}?overlay=true`);
-    }
-    overlayWindow.on("closed", () => {
-      overlayWindow = null;
-    });
   });
   ipcMain.handle("get-monitors", () => {
     return OBSManager.getInstance().getMonitors();
   });
-  ipcMain.handle("select-monitor", async (event, index) => {
+  ipcMain.handle("select-monitor", async (_event, index) => {
     if (!lastReplayPath) return;
     console.log("Selected monitor:", index);
     try {
@@ -3829,8 +4076,11 @@ app.whenReady().then(() => {
     if (overlayWindow) overlayWindow.close();
   });
   if (!ret) {
-    console.log("registration failed");
+    console.log("Hotkey registration failed");
+  } else {
+    console.log("Hotkey Alt+F10 registered successfully");
   }
+  console.log("LuminReplay is running in the system tray");
 });
 export {
   MAIN_DIST,

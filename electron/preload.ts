@@ -26,4 +26,15 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 contextBridge.exposeInMainWorld('electronAPI', {
   getMonitors: () => ipcRenderer.invoke('get-monitors'),
   selectMonitor: (index: number | 'all') => ipcRenderer.invoke('select-monitor', index),
+
+  // Settings API
+  getSettings: () => ipcRenderer.invoke('settings-get-all'),
+  getSetting: (key: string) => ipcRenderer.invoke('settings-get', key),
+  setSetting: (key: string, value: any) => ipcRenderer.invoke('settings-set', key, value),
+  setSettings: (settings: Record<string, any>) => ipcRenderer.invoke('settings-set-multiple', settings),
+  resetSettings: () => ipcRenderer.invoke('settings-reset'),
+  pickFolder: () => ipcRenderer.invoke('settings-pick-folder'),
+
+  // Restart OBS with new settings
+  restartOBS: () => ipcRenderer.invoke('obs-restart'),
 })

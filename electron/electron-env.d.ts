@@ -24,4 +24,18 @@ declare namespace NodeJS {
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
   ipcRenderer: import('electron').IpcRenderer
+  electronAPI: {
+    getMonitors: () => Promise<any[]>
+    selectMonitor: (index: number | 'all') => Promise<void>
+
+    // Settings API
+    getSettings: () => Promise<any>
+    getSetting: (key: string) => Promise<any>
+    setSetting: (key: string, value: any) => Promise<any>
+    setSettings: (settings: Record<string, any>) => Promise<any>
+    resetSettings: () => Promise<any>
+    pickFolder: () => Promise<string | null>
+    restartOBS: () => Promise<{ success: boolean }>
+  }
 }
+

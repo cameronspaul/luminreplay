@@ -22,5 +22,14 @@ electron.contextBridge.exposeInMainWorld("ipcRenderer", {
 });
 electron.contextBridge.exposeInMainWorld("electronAPI", {
   getMonitors: () => electron.ipcRenderer.invoke("get-monitors"),
-  selectMonitor: (index) => electron.ipcRenderer.invoke("select-monitor", index)
+  selectMonitor: (index) => electron.ipcRenderer.invoke("select-monitor", index),
+  // Settings API
+  getSettings: () => electron.ipcRenderer.invoke("settings-get-all"),
+  getSetting: (key) => electron.ipcRenderer.invoke("settings-get", key),
+  setSetting: (key, value) => electron.ipcRenderer.invoke("settings-set", key, value),
+  setSettings: (settings) => electron.ipcRenderer.invoke("settings-set-multiple", settings),
+  resetSettings: () => electron.ipcRenderer.invoke("settings-reset"),
+  pickFolder: () => electron.ipcRenderer.invoke("settings-pick-folder"),
+  // Restart OBS with new settings
+  restartOBS: () => electron.ipcRenderer.invoke("obs-restart")
 });
