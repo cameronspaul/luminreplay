@@ -21,6 +21,8 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const [isCustomDuration, setIsCustomDuration] = useState(false);
     const [isCustomBitrate, setIsCustomBitrate] = useState(false);
 
+    const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
+
     // Initialize custom mode based on loaded settings
     useEffect(() => {
         if (settings) {
@@ -68,6 +70,43 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         setHasChanges(true);
     };
 
+    const handleHotkeyKeyDown = (e: React.KeyboardEvent) => {
+        if (!isRecordingHotkey) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (e.key === 'Escape') {
+            setIsRecordingHotkey(false);
+            return;
+        }
+
+        const modifiers = [];
+        if (e.ctrlKey) modifiers.push('Ctrl');
+        if (e.metaKey) modifiers.push('Super'); // Often mapped to CommandOrControl on Mac, Super on Windows
+        if (e.altKey) modifiers.push('Alt');
+        if (e.shiftKey) modifiers.push('Shift');
+
+        // Ignore if only modifiers are pressed
+        if (['Control', 'Meta', 'Alt', 'Shift'].includes(e.key)) return;
+
+        let key = e.key.toUpperCase();
+
+        // Map common keys to Electron format
+        if (key === ' ') key = 'Space';
+        else if (key.length === 1) key = key.toUpperCase();
+        else if (key.startsWith('ARROW')) key = key.replace('ARROW', ''); // Up, Down, Left, Right
+
+        // Handle function keys
+        if (/^F\d+$/.test(key)) {
+            // Keep as is (F1, F10, etc)
+        }
+
+        const hotkey = [...modifiers, key].join('+');
+        handleChange('replayHotkey', hotkey);
+        setIsRecordingHotkey(false);
+    };
+
     const handleSave = async () => {
         if (!settings) return;
         setSaving(true);
@@ -77,6 +116,10 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             // Restart OBS with new settings
             // @ts-ignore
             await window.electronAPI?.restartOBS();
+            // Update Hotkeys
+            // @ts-ignore
+            await window.electronAPI?.updateHotkey();
+
             setHasChanges(false);
             alert('Settings saved! OBS has been reconfigured.');
         } catch (err) {
@@ -441,13 +484,24 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="settings-row">
                         <label>Save Replay</label>
                         <div className="settings-input-group">
-                            <input
-                                type="text"
-                                value={settings.replayHotkey}
-                                readOnly
-                                className="settings-hotkey-display"
-                            />
-                            <span className="settings-hint">Hotkey to save replay (editable in future update)</span>
+                            <div className="settings-hotkey-wrapper">
+                                <input
+                                    type="text"
+                                    value={isRecordingHotkey ? "Press any key..." : settings.replayHotkey}
+                                    readOnly
+                                    className={`settings-hotkey-display ${isRecordingHotkey ? 'recording' : ''}`}
+                                    onClick={() => setIsRecordingHotkey(true)}
+                                    onKeyDown={handleHotkeyKeyDown}
+                                    onBlur={() => setIsRecordingHotkey(false)}
+                                    placeholder="Click to set hotkey"
+                                />
+                                {isRecordingHotkey && (
+                                    <div className="settings-hotkey-overlay" onClick={() => setIsRecordingHotkey(false)}>
+                                        Tap to cancel
+                                    </div>
+                                )}
+                            </div>
+                            <span className="settings-hint">Click to record a new hotkey (e.g. Alt+F10)</span>
                         </div>
                     </div>
                 </section>

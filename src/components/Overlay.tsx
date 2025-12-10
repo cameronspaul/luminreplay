@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import './Overlay.css';
 
 const Overlay: React.FC = () => {
     const [monitors, setMonitors] = useState<any[]>([]);
@@ -18,38 +19,33 @@ const Overlay: React.FC = () => {
     };
 
     return (
-        <div style={{
-            width: '100vw',
-            height: '100vh',
-            background: 'rgba(0,0,0,0.8)',
-            color: 'white',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '20px'
-        }}>
-            <h1>Select View to Save</h1>
-            <div style={{ display: 'flex', gap: '20px' }}>
+        <div className="overlay-container">
+            <h1 className="overlay-title">Select View to Save</h1>
+
+            <div className="overlay-monitors-grid">
                 {monitors.map((m, idx) => (
-                    <button
+                    <div
                         key={idx}
+                        className="monitor-card"
                         onClick={() => handleSelect(idx)}
-                        style={{ padding: '20px', fontSize: '18px', cursor: 'pointer' }}
                     >
-                        Monitor {idx + 1}
-                        <br />
-                        <small>{m.width}x{m.height}</small>
-                    </button>
+                        <div className="monitor-name">Monitor {idx + 1}</div>
+                        <div className="monitor-res">{m.width}x{m.height}</div>
+                    </div>
                 ))}
-                <button
+
+                <div
+                    className="monitor-card mega-canvas"
                     onClick={() => handleSelect('all')}
-                    style={{ padding: '20px', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}
                 >
-                    Save All (Mega-Canvas)
-                </button>
+                    <div className="monitor-name">Save All</div>
+                    <div className="monitor-res">Mega-Canvas</div>
+                </div>
             </div>
-            <button onClick={() => window.close()} style={{ marginTop: '50px' }}>Cancel</button>
+
+            <button className="overlay-cancel-btn" onClick={() => window.close()}>
+                Cancel
+            </button>
         </div>
     );
 };

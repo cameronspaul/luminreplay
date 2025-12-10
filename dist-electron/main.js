@@ -4007,11 +4007,12 @@ function showOverlay() {
     return;
   }
   overlayWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 450,
+    height: 670,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
+    resizable: false,
     webPreferences: {
       preload: path$3.join(__dirname$1, "preload.mjs")
     }
@@ -4052,14 +4053,29 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   OBSManager.getInstance().initialize();
-  const ret = globalShortcut.register("Alt+F10", async () => {
-    console.log("Alt+F10 is pressed");
-    try {
-      lastReplayPath = await OBSManager.getInstance().saveReplayBuffer();
-      showOverlay();
-    } catch (err) {
-      console.error("Failed to save replay:", err);
+  const registerGlobalHotkey = () => {
+    globalShortcut.unregisterAll();
+    const settings = SettingsManager.getInstance().getAllSettings();
+    const hotkey = settings.replayHotkey || "Alt+F10";
+    const ret = globalShortcut.register(hotkey, async () => {
+      console.log(`${hotkey} is pressed`);
+      try {
+        lastReplayPath = await OBSManager.getInstance().saveReplayBuffer();
+        showOverlay();
+      } catch (err) {
+        console.error("Failed to save replay:", err);
+      }
+    });
+    if (!ret) {
+      console.log(`Hotkey registration failed for ${hotkey}`);
+    } else {
+      console.log(`Hotkey ${hotkey} registered successfully`);
     }
+  };
+  registerGlobalHotkey();
+  ipcMain.handle("update-hotkey", () => {
+    registerGlobalHotkey();
+    return true;
   });
   ipcMain.handle("get-monitors", () => {
     return OBSManager.getInstance().getMonitors();
@@ -4075,11 +4091,6 @@ app.whenReady().then(() => {
     }
     if (overlayWindow) overlayWindow.close();
   });
-  if (!ret) {
-    console.log("Hotkey registration failed");
-  } else {
-    console.log("Hotkey Alt+F10 registered successfully");
-  }
   console.log("LuminReplay is running in the system tray");
 });
 export {

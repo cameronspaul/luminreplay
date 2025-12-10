@@ -151,11 +151,12 @@ function showOverlay() {
   }
 
   overlayWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 450,
+    height: 670,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
+    resizable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     }
@@ -219,17 +220,40 @@ app.whenReady().then(() => {
   // Initialize OBS
   OBSManager.getInstance().initialize()
 
-  // Register Hotkey
-  const ret = globalShortcut.register('Alt+F10', async () => {
-    console.log('Alt+F10 is pressed')
+  // Function to register hotkey
+  const registerGlobalHotkey = () => {
+    // Unregister all first to be safe (or track the specific one)
+    globalShortcut.unregisterAll()
 
-    try {
-      // Trigger Save
-      lastReplayPath = await OBSManager.getInstance().saveReplayBuffer() as string
-      showOverlay()
-    } catch (err) {
-      console.error('Failed to save replay:', err)
+    const settings = SettingsManager.getInstance().getAllSettings()
+    const hotkey = settings.replayHotkey || 'Alt+F10'
+
+    const ret = globalShortcut.register(hotkey, async () => {
+      console.log(`${hotkey} is pressed`)
+
+      try {
+        // Trigger Save
+        lastReplayPath = await OBSManager.getInstance().saveReplayBuffer() as string
+        showOverlay()
+      } catch (err) {
+        console.error('Failed to save replay:', err)
+      }
+    })
+
+    if (!ret) {
+      console.log(`Hotkey registration failed for ${hotkey}`)
+    } else {
+      console.log(`Hotkey ${hotkey} registered successfully`)
     }
+  }
+
+  // Register initially
+  registerGlobalHotkey()
+
+  // IPC Handler to update hotkey
+  ipcMain.handle('update-hotkey', () => {
+    registerGlobalHotkey()
+    return true
   })
 
   // IPC Handlers
@@ -250,12 +274,6 @@ app.whenReady().then(() => {
 
     if (overlayWindow) overlayWindow.close()
   })
-
-  if (!ret) {
-    console.log('Hotkey registration failed')
-  } else {
-    console.log('Hotkey Alt+F10 registered successfully')
-  }
 
   console.log('LuminReplay is running in the system tray')
 })

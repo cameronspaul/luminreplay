@@ -37,4 +37,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Restart OBS with new settings
   restartOBS: () => ipcRenderer.invoke('obs-restart'),
+
+  // Update hotkeys
+  updateHotkey: () => ipcRenderer.invoke('update-hotkey'),
 })
