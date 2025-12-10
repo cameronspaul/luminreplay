@@ -74,53 +74,9 @@ function createTray() {
   }
 
   tray = new Tray(trayIcon)
-  tray.setToolTip('LuminReplay - Recording')
 
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'LuminReplay',
-      enabled: false,
-    },
-    { type: 'separator' },
-    {
-      label: 'Replay Buffer Active',
-      enabled: false,
-    },
-    { type: 'separator' },
-    {
-      label: 'Save Replay (Alt+F10)',
-      click: async () => {
-        await performReplaySave()
-      },
-    },
-    { type: 'separator' },
-    {
-      label: 'Settings',
-      click: () => {
-        if (win) {
-          win.show()
-          win.focus()
-        }
-      },
-    },
-    {
-      label: 'Open Recordings Folder',
-      click: () => {
-        const settings = SettingsManager.getInstance().getAllSettings()
-        shell.openPath(settings.recordingPath)
-      },
-    },
-    { type: 'separator' },
-    {
-      label: 'Quit',
-      click: () => {
-        isQuitting = true
-        app.quit()
-      },
-    },
-  ])
-
-  tray.setContextMenu(contextMenu)
+  // Initialize with active state (matches OBS auto-start)
+  updateTrayMenu(true)
 
   // Single-click to show settings
   tray.on('click', () => {
