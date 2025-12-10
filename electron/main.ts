@@ -360,6 +360,7 @@ const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
 } else {
+  app.setAppUserModelId('com.luminreplay.app')
   app.on('second-instance', () => {
     // Someone tried to run a second instance, show our window
     if (win) {
