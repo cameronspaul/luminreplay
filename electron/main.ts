@@ -53,72 +53,72 @@ console.warn = (...args) => {
   sendToDebug('warn', args)
 }
 
-function createDebugWindow() {
-  debugWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    title: 'LuminReplay Debug Console',
-    autoHideMenuBar: true,
-    backgroundColor: '#1e1e1e',
-    icon: path.join(process.env.VITE_PUBLIC, 'lumin.ico'),
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    }
-  })
+// function createDebugWindow() {
+//   debugWindow = new BrowserWindow({
+//     width: 800,
+//     height: 600,
+//     title: 'LuminReplay Debug Console',
+//     autoHideMenuBar: true,
+//     backgroundColor: '#1e1e1e',
+//     icon: path.join(process.env.VITE_PUBLIC, 'lumin.ico'),
+//     webPreferences: {
+//       nodeIntegration: true,
+//       contextIsolation: false,
+//     }
+//   })
 
-  const html = `
-    <html>
-      <head>
-        <title>LuminReplay Debug Console</title>
-        <style>
-          body { background-color: #1e1e1e; color: #d4d4d4; font-family: Consolas, 'Courier New', monospace; padding: 10px; margin: 0; overflow-y: auto; }
-          .entry { margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 2px; white-space: pre-wrap; word-wrap: break-word; }
-          .log { color: #d4d4d4; }
-          .error { color: #f48771; }
-          .warn { color: #cca700; }
-          .timestamp { color: #569cd6; margin-right: 8px; font-size: 0.9em; }
-        </style>
-      </head>
-      <body>
-        <div id="logs"></div>
-        <script>
-          const { ipcRenderer } = require('electron');
-          const logsDiv = document.getElementById('logs');
-          
-          function addLog(message, type) {
-             const div = document.createElement('div');
-             div.className = 'entry ' + type;
-             
-             const time = new Date().toLocaleTimeString();
-             const timeSpan = document.createElement('span');
-             timeSpan.className = 'timestamp';
-             timeSpan.textContent = '[' + time + ']';
-             
-             const msgSpan = document.createElement('span');
-             msgSpan.textContent = message;
-             
-             div.appendChild(timeSpan);
-             div.appendChild(msgSpan);
-             
-             logsDiv.appendChild(div);
-             window.scrollTo(0, document.body.scrollHeight);
-          }
-          
-          ipcRenderer.on('log-message', (event, data) => {
-             addLog(data.message, data.type);
-          });
-        </script>
-      </body>
-    </html>
-  `
+//   const html = `
+//     <html>
+//       <head>
+//         <title>LuminReplay Debug Console</title>
+//         <style>
+//           body { background-color: #1e1e1e; color: #d4d4d4; font-family: Consolas, 'Courier New', monospace; padding: 10px; margin: 0; overflow-y: auto; }
+//           .entry { margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 2px; white-space: pre-wrap; word-wrap: break-word; }
+//           .log { color: #d4d4d4; }
+//           .error { color: #f48771; }
+//           .warn { color: #cca700; }
+//           .timestamp { color: #569cd6; margin-right: 8px; font-size: 0.9em; }
+//         </style>
+//       </head>
+//       <body>
+//         <div id="logs"></div>
+//         <script>
+//           const { ipcRenderer } = require('electron');
+//           const logsDiv = document.getElementById('logs');
 
-  debugWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+//           function addLog(message, type) {
+//              const div = document.createElement('div');
+//              div.className = 'entry ' + type;
 
-  debugWindow.on('closed', () => {
-    debugWindow = null
-  })
-}
+//              const time = new Date().toLocaleTimeString();
+//              const timeSpan = document.createElement('span');
+//              timeSpan.className = 'timestamp';
+//              timeSpan.textContent = '[' + time + ']';
+
+//              const msgSpan = document.createElement('span');
+//              msgSpan.textContent = message;
+
+//              div.appendChild(timeSpan);
+//              div.appendChild(msgSpan);
+
+//              logsDiv.appendChild(div);
+//              window.scrollTo(0, document.body.scrollHeight);
+//           }
+
+//           ipcRenderer.on('log-message', (event, data) => {
+//              addLog(data.message, data.type);
+//           });
+//         </script>
+//       </body>
+//     </html>
+//   `
+
+//   debugWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+
+//   debugWindow.on('closed', () => {
+//     debugWindow = null
+//   })
+// }
 // ------------------------------------
 
 
