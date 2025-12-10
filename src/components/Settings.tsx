@@ -240,6 +240,18 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <button onClick={onBack} className="settings-back-btn">
                     ← Back
                 </button>
+                <div className="settings-header-actions">
+                    <button onClick={handleReset} className="settings-reset-btn">
+                        Reset Defaults
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={!hasChanges || saving}
+                        className={`settings-save-btn ${hasChanges ? 'has-changes' : ''}`}
+                    >
+                        {saving ? 'Saving...' : hasChanges ? 'Save' : 'Saved'}
+                    </button>
+                </div>
             </div>
 
             <div className="settings-content">
@@ -856,19 +868,6 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         </div>
                     </div>
                 </section>
-            </div>
-
-            <div className="settings-footer">
-                <button onClick={handleReset} className="settings-reset-btn">
-                    Reset to Defaults
-                </button>
-                <button
-                    onClick={handleSave}
-                    disabled={!hasChanges || saving}
-                    className={`settings-save-btn ${hasChanges ? 'has-changes' : ''}`}
-                >
-                    {saving ? 'Saving...' : hasChanges ? 'Save & Apply' : 'Saved'}
-                </button>
             </div>
         </div>
     );

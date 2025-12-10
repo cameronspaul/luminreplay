@@ -24,10 +24,22 @@
 .settings-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 1.5rem;
     margin-bottom: 2rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid rgba(241, 210, 137, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-dark);
+    margin-top: -1rem;
+}
+
+.settings-header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
 }
 
 .settings-header h1 {
@@ -367,20 +379,13 @@
 }
 
 /* Footer */
-.settings-footer {
-    max-width: 800px;
-    margin: 2rem auto 0;
-    display: flex;
-    justify-content: space-between;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
+/* Footer removed, moved to header */
 
 .settings-reset-btn {
     background: transparent;
     border: 1px solid rgba(239, 68, 68, 0.5);
     color: #ef4444;
-    padding: 0.75rem 1.5rem;
+    padding: 0.6rem 1.2rem;
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.9rem;
@@ -396,7 +401,7 @@
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-muted);
-    padding: 0.75rem 2rem;
+    padding: 0.6rem 1.5rem;
     border-radius: 8px;
     cursor: not-allowed;
     font-size: 0.95rem;

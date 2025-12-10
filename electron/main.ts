@@ -306,6 +306,21 @@ function toggleReplayBuffer(): boolean {
 function updateTrayMenu(bufferActive: boolean) {
   if (!tray) return
 
+  // Update Icon based on buffer state
+  const iconName = bufferActive ? 'luminrecord.png' : 'lumin.png'
+  const iconPath = path.join(process.env.VITE_PUBLIC, iconName)
+
+  try {
+    let trayIcon = nativeImage.createFromPath(iconPath)
+    if (!trayIcon.isEmpty()) {
+      // Resize for tray (16x16 on Windows)
+      trayIcon = trayIcon.resize({ width: 16, height: 16 })
+      tray.setImage(trayIcon)
+    }
+  } catch (e) {
+    console.error(`Failed to update tray icon to ${iconName}:`, e)
+  }
+
   const settings = SettingsManager.getInstance().getAllSettings()
   const toggleHotkey = settings.bufferToggleHotkey || 'Alt+F9'
 
