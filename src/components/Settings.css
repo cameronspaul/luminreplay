@@ -2,7 +2,7 @@
     width: 100%;
     height: 100%;
     /* Use the global background */
-    background: transparent;
+    background: var(--bg-dark);
     color: var(--text-main);
     font-family: 'Inter', system-ui, sans-serif;
     padding: 1rem;

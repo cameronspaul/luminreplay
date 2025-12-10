@@ -26,7 +26,7 @@
 
   color-scheme: dark;
   color: var(--text-main);
-  background-color: var(--bg-dark);
+  /* background-color removed - set per-component instead */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -34,18 +34,25 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  background-color: transparent;
+}
+
 body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: var(--bg-dark);
+  background-color: transparent;
   color: var(--text-main);
+  overflow: hidden;
+  /* Prevent scrollbars on body */
 }
 
 #root {
   width: 100%;
   height: 100%;
+  background-color: transparent;
 }
 
 button {

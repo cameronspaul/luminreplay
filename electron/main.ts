@@ -213,11 +213,23 @@ function showOverlay() {
     height: 670,
     frame: false,
     transparent: true,
+    backgroundColor: '#00000000', // Ensure fully transparent background
+    show: false, // Don't show until ready
     alwaysOnTop: true,
     resizable: false,
+    skipTaskbar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     }
+  })
+
+  // Prevent the overlay from being focused on random elements
+  overlayWindow.setAlwaysOnTop(true, 'screen-saver')
+
+  // Show only when ready to avoid flash of unstyled content
+  overlayWindow.once('ready-to-show', () => {
+    overlayWindow?.show()
+    overlayWindow?.focus()
   })
 
   if (VITE_DEV_SERVER_URL) {

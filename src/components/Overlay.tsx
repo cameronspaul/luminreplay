@@ -5,6 +5,12 @@ const Overlay: React.FC = () => {
     const [monitors, setMonitors] = useState<any[]>([]);
 
     useEffect(() => {
+        // Ensure the body/html/#root background is transparent for this window
+        document.body.style.backgroundColor = 'transparent';
+        document.documentElement.style.backgroundColor = 'transparent';
+        const root = document.getElementById('root');
+        if (root) root.style.backgroundColor = 'transparent';
+
         // Request monitor info from main process
         // @ts-ignore
         window.electronAPI?.getMonitors().then((mons) => {
@@ -20,38 +26,40 @@ const Overlay: React.FC = () => {
 
     return (
         <div className="overlay-container">
-            <h1 className="overlay-title">Select View to Save</h1>
+            <div className="overlay-popup">
+                <h1 className="overlay-title">Select View to Save</h1>
 
-            <div className="overlay-monitors-grid">
-                {monitors.map((m, idx) => (
+                <div className="overlay-monitors-grid">
+                    {monitors.map((m, idx) => (
+                        <div
+                            key={idx}
+                            className="monitor-card"
+                            onClick={() => handleSelect(idx)}
+                        >
+                            <div className="monitor-name">Monitor {idx + 1}</div>
+                            <div className="monitor-res">{m.width}x{m.height}</div>
+                        </div>
+                    ))}
+
                     <div
-                        key={idx}
                         className="monitor-card"
-                        onClick={() => handleSelect(idx)}
+                        onClick={() => handleSelect('all')}
                     >
-                        <div className="monitor-name">Monitor {idx + 1}</div>
-                        <div className="monitor-res">{m.width}x{m.height}</div>
+                        <div className="monitor-name">Save All</div>
+                        <div className="monitor-res">All Screens</div>
                     </div>
-                ))}
-
-                <div
-                    className="monitor-card"
-                    onClick={() => handleSelect('all')}
-                >
-                    <div className="monitor-name">Save All</div>
-                    <div className="monitor-res">All Screens</div>
                 </div>
-            </div>
 
-            <button
-                className="overlay-cancel-btn"
-                onClick={() => {
-                    // @ts-ignore
-                    window.electronAPI?.cancelSave();
-                }}
-            >
-                Cancel
-            </button>
+                <button
+                    className="overlay-cancel-btn"
+                    onClick={() => {
+                        // @ts-ignore
+                        window.electronAPI?.cancelSave();
+                    }}
+                >
+                    Cancel
+                </button>
+            </div>
         </div>
     );
 };

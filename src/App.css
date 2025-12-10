@@ -2,7 +2,7 @@
   width: 100%;
   min-height: 100vh;
   /* Use the dark background but add the subtle radial glow behind everything */
-  background: radial-gradient(circle at center, rgba(223, 182, 107, 0.08) 0%, rgba(0, 0, 0, 0) 70%);
+  background: radial-gradient(circle at center, rgba(223, 182, 107, 0.08) 0%, rgba(0, 0, 0, 0) 70%), var(--bg-dark);
   display: flex;
   /* Removed fixed centering to avoid clipping on overflow */
   /* align-items: center; justify-content: center; */
