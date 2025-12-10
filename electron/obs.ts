@@ -157,13 +157,40 @@ export class OBSManager {
         obs.NodeObs.IPC.host(`luminreplay-${process.pid}`);
 
         // Set working directory - critical for loading plugins
-        // This path depends on where the module is installed.
-        // Usually node_modules/obs-studio-node
-        const obsPath = path.join(process.cwd(), 'node_modules', 'obs-studio-node');
+        let obsPath = '';
+        try {
+            // Robustly find obs-studio-node path using node's resolution
+            const obsMainPath = require.resolve('obs-studio-node');
+            obsPath = path.dirname(obsMainPath);
+        } catch (e) {
+            console.warn('Could not resolve obs-studio-node via require, falling back to manual path');
+            const appRoot = process.env.APP_ROOT || process.cwd();
+            obsPath = path.join(appRoot, 'node_modules', 'obs-studio-node');
+        }
+
+        // Fix for ASAR builds: native modules are unpacked to app.asar.unpacked
+        // but require.resolve might point to the localized stub inside app.asar
+        if (obsPath.includes('app.asar')) {
+            const unpackedPath = obsPath.replace('app.asar', 'app.asar.unpacked');
+            console.log(`ASAR detected. Redirecting OBS path from ${obsPath} to ${unpackedPath}`);
+            // Verify if the unpacked path exists, if so use it
+            if (fs.existsSync(unpackedPath)) {
+                obsPath = unpackedPath;
+            } else {
+                console.warn(`Unpacked OBS path does not exist: ${unpackedPath}. Keeping original.`);
+            }
+        }
+
+        console.log(`OBS Init Debug:`);
+        console.log(`  CWD: ${process.cwd()}`);
+        console.log(`  Resolved OBS Path: ${obsPath}`);
+        console.log(`  OBS Path Exists: ${fs.existsSync(obsPath)}`);
+
         obs.NodeObs.SetWorkingDirectory(obsPath);
 
         const userDataPath = app.getPath('userData');
         const obsDataPath = path.join(userDataPath, 'osn-data');
+        console.log(`  OBS Data Path: ${obsDataPath}`);
 
         if (!fs.existsSync(obsDataPath)) {
             fs.mkdirSync(obsDataPath, { recursive: true });
