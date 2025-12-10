@@ -22,6 +22,9 @@ export interface AppSettings {
 
     // Hotkey
     replayHotkey: string;
+
+    // Monitors
+    enabledMonitors?: number[]; // indices of enabled monitors. If undefined, all are enabled.
 }
 
 const defaultSettings: AppSettings = {
@@ -34,6 +37,7 @@ const defaultSettings: AppSettings = {
     captureDesktopAudio: true,
     captureMicrophone: true,
     replayHotkey: 'Alt+F10',
+    enabledMonitors: undefined,
 };
 
 class SettingsManager {

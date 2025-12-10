@@ -1,11 +1,9 @@
 import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, shell } from 'electron'
-import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { OBSManager } from './obs'
 import SettingsManager from './settings'
 
-const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 process.env.APP_ROOT = path.join(__dirname, '..')
@@ -61,7 +59,7 @@ function createTray() {
   // Create tray icon - use PNG for Windows compatibility
   const iconPath = path.join(process.env.VITE_PUBLIC, 'tray-icon.png')
 
-  let trayIcon: nativeImage
+  let trayIcon
   try {
     trayIcon = nativeImage.createFromPath(iconPath)
     // Resize for tray (16x16 on Windows)
@@ -90,12 +88,7 @@ function createTray() {
     {
       label: 'Save Replay (Alt+F10)',
       click: async () => {
-        try {
-          lastReplayPath = await OBSManager.getInstance().saveReplayBuffer() as string
-          showOverlay()
-        } catch (err) {
-          console.error('Failed to save replay:', err)
-        }
+        await performReplaySave()
       },
     },
     { type: 'separator' },
@@ -173,6 +166,32 @@ function showOverlay() {
   })
 }
 
+async function performReplaySave() {
+  try {
+    lastReplayPath = await OBSManager.getInstance().saveReplayBuffer() as string
+
+    const monitors = OBSManager.getInstance().getMonitors()
+    const settings = SettingsManager.getInstance().getAllSettings()
+
+    const activeMonitors = monitors.filter(m => {
+      if (!settings.enabledMonitors) return true
+      return settings.enabledMonitors.includes(m.index)
+    })
+
+    if (activeMonitors.length === 1) {
+      // Single monitor - no processing needed, original file is already correct
+      console.log("Single monitor detected/enabled. Replay saved directly (no processing needed).")
+      return true
+    } else {
+      showOverlay()
+      return true
+    }
+  } catch (err) {
+    console.error('Failed to save replay:', err)
+    return false
+  }
+}
+
 app.on('window-all-closed', () => {
   // Don't quit on window close - we're a tray app
   // Only quit when explicitly requested
@@ -230,14 +249,7 @@ app.whenReady().then(() => {
 
     const ret = globalShortcut.register(hotkey, async () => {
       console.log(`${hotkey} is pressed`)
-
-      try {
-        // Trigger Save
-        lastReplayPath = await OBSManager.getInstance().saveReplayBuffer() as string
-        showOverlay()
-      } catch (err) {
-        console.error('Failed to save replay:', err)
-      }
+      await performReplaySave()
     })
 
     if (!ret) {
@@ -262,14 +274,7 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('save-replay', async () => {
-    try {
-      lastReplayPath = await OBSManager.getInstance().saveReplayBuffer() as string
-      showOverlay()
-      return true
-    } catch (err) {
-      console.error('Failed to save replay:', err)
-      return false
-    }
+    return await performReplaySave()
   })
 
   ipcMain.handle('select-monitor', async (_event, index) => {

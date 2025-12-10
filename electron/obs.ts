@@ -58,6 +58,8 @@ export class OBSManager {
     private static instance: OBSManager;
     private initialized = false;
     private replayBufferRunning = false;
+    private isRestarting = false;  // Flag to track intentional restart
+    private pendingStopResolve: (() => void) | null = null;  // Promise resolver for stop signal
     private pendingReplaySave: {
         resolve: (path: string) => void;
         reject: (err: Error) => void;
@@ -94,20 +96,46 @@ export class OBSManager {
     public async restartWithNewSettings() {
         if (!this.initialized || !obs) return;
 
-        // Stop replay buffer if running
+        this.isRestarting = true;
+
+        // Stop replay buffer if running and wait for the stop signal
         if (this.replayBufferRunning) {
             console.log('Stopping replay buffer for settings update...');
+
+            // Create a promise that resolves when we get the stop signal
+            const stopPromise = new Promise<void>((resolve) => {
+                this.pendingStopResolve = resolve;
+            });
+
+            // Also set a timeout in case the signal doesn't come
+            const timeoutPromise = new Promise<void>((resolve) => {
+                setTimeout(() => {
+                    console.log('Stop signal timeout, proceeding anyway...');
+                    resolve();
+                }, 2000);
+            });
+
             obs.NodeObs.OBS_service_stopReplayBuffer(false);
-            // Wait a bit for it to stop
-            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Wait for either the stop signal or timeout
+            await Promise.race([stopPromise, timeoutPromise]);
+
+            // Clear the resolver
+            this.pendingStopResolve = null;
+
+            // Small additional delay to ensure OBS is fully ready
+            await new Promise(resolve => setTimeout(resolve, 200));
         }
 
         // Re-apply settings
         this.setupVideo();
         this.setupOutput();
+        this.setupScene();
 
         // Restart replay buffer
         this.startReplayBuffer();
+
+        this.isRestarting = false;
     }
 
     public initialize() {
@@ -142,6 +170,7 @@ export class OBSManager {
             this.setupVideo();
             this.setupOutput();
             this.setupScene();
+            this.startReplayBuffer();
         }
     }
 
@@ -172,14 +201,37 @@ export class OBSManager {
 
                 case EOBSOutputSignal.Stop:
                     console.log('Replay buffer stopped');
-                    this.replayBufferRunning = false;
+                    // Resolve the pending stop promise if we're waiting for it
+                    if (this.pendingStopResolve) {
+                        this.pendingStopResolve();
+                        // Don't set replayBufferRunning to false here since we're restarting
+                    } else if (!this.isRestarting) {
+                        // Only set to false if we're NOT in the middle of a restart
+                        this.replayBufferRunning = false;
+                    }
                     break;
 
                 case EOBSOutputSignal.Wrote:
                     // Replay was saved successfully - get the file path
                     try {
-                        const replayPath = obs.NodeObs.OBS_service_getLastReplay();
+                        let replayPath = obs.NodeObs.OBS_service_getLastReplay();
                         console.log('Replay saved to:', replayPath);
+
+                        // Rename file if it starts with default "Replay"
+                        const fileName = path.basename(replayPath);
+                        if (fileName.startsWith('Replay')) {
+                            const dir = path.dirname(replayPath);
+                            const newFileName = fileName.replace('Replay', 'LuminReplay');
+                            const newPath = path.join(dir, newFileName);
+                            try {
+                                fs.renameSync(replayPath, newPath);
+                                console.log('Renamed replay to:', newPath);
+                                replayPath = newPath;
+                            } catch (renameErr) {
+                                console.error('Error renaming replay file:', renameErr);
+                            }
+                        }
+
                         this.lastReplayPath = replayPath;
 
                         // Resolve pending save promise
@@ -214,9 +266,21 @@ export class OBSManager {
         const settings = SettingsManager.getInstance().getAllSettings();
 
         // Detect total screen size
-        const displays = screen.getAllDisplays();
+        const allDisplays = screen.getAllDisplays();
 
-        // Calculate the bounding box that encompasses all monitors
+        // Filter to only enabled monitors
+        const displays = allDisplays.filter((_, i) => {
+            if (!settings.enabledMonitors) return true; // All enabled if undefined
+            return settings.enabledMonitors.includes(i);
+        });
+
+        // If no monitors enabled, fall back to all
+        if (displays.length === 0) {
+            console.warn("No monitors enabled, using all displays");
+            displays.push(...allDisplays);
+        }
+
+        // Calculate the bounding box that encompasses enabled monitors
         let minX = 0, minY = 0, maxX = 0, maxY = 0;
 
         displays.forEach((d, i) => {
@@ -229,7 +293,7 @@ export class OBSManager {
         const totalWidth = maxX - minX;
         const totalHeight = maxY - minY;
 
-        console.log(`Configuring OBS Video: ${totalWidth}x${totalHeight} @ ${settings.fps}fps`);
+        console.log(`Configuring OBS Video: ${totalWidth}x${totalHeight} @ ${settings.fps}fps (${displays.length} monitor(s))`);
 
         try {
             // Get current video settings using the correct API
@@ -359,12 +423,27 @@ export class OBSManager {
 
         try {
             // Create the main scene using obs.SceneFactory
-            const sceneName = "MegaCanvas";
+            const sceneName = `MegaCanvas-${Date.now()}`;
             const scene = obs.SceneFactory.create(sceneName);
             console.log(`Created scene: ${sceneName}`);
 
             // Get all displays
-            const displays = screen.getAllDisplays();
+            const allDisplays = screen.getAllDisplays();
+
+            // Get settings for enabled monitors
+            const settings = SettingsManager.getInstance().getAllSettings();
+            const enabledMonitors = settings.enabledMonitors;
+
+            // Filter to only enabled monitors
+            const displays = allDisplays.filter((_, i) => {
+                if (!enabledMonitors) return true;
+                return enabledMonitors.includes(i);
+            });
+
+            if (displays.length === 0) {
+                console.warn("No monitors enabled, using all displays for scene");
+                displays.push(...allDisplays);
+            }
 
             // Calculate the offset to normalize coordinates (make min x,y = 0)
             let minX = 0, minY = 0;
@@ -373,56 +452,68 @@ export class OBSManager {
                 if (i === 0 || d.bounds.y < minY) minY = d.bounds.y;
             });
 
-            displays.forEach((display, index) => {
-                const sourceName = `Monitor-${index}`;
+            // Add each enabled display to the scene
+            allDisplays.forEach((display, index) => {
+                // Skip if monitor is not enabled
+                if (enabledMonitors && !enabledMonitors.includes(index)) {
+                    console.log(`Skipping Monitor-${index} (disabled in settings)`);
+                    return;
+                }
 
-                console.log(`Creating source ${sourceName} for display ${display.id} at ${display.bounds.x},${display.bounds.y}`);
+                const sourceName = `Monitor-${index}`;
+                console.log(`Creating source ${sourceName} for display ${display.id}`);
 
                 try {
-                    // Create monitor capture source
-                    // On Windows, 'monitor_capture' is the source type for display capture
-                    // The 'monitor' setting is the monitor index (0-based)
                     const inputSettings = {
                         monitor: index,
                         capture_cursor: true,
                     };
 
-                    // Create the input source using InputFactory
-                    const input = obs.InputFactory.create('monitor_capture', sourceName, inputSettings);
+                    // Try to create the input
+                    let input = obs.InputFactory.create('monitor_capture', sourceName, inputSettings);
 
+                    // If failed (likely exists), try to retrieve it
                     if (!input) {
-                        console.error(`Failed to create input for monitor ${index}`);
-                        return;
+                        try {
+                            input = obs.InputFactory.fromName(sourceName);
+                        } catch (e) {
+                            console.warn(`Could not retrieve existing input ${sourceName}`, e);
+                        }
                     }
 
-                    console.log(`Created input: ${sourceName}, dimensions: ${input.width}x${input.height}`);
+                    if (input) {
+                        console.log(`Got input: ${sourceName}, dimensions: ${input.width}x${input.height}`);
 
-                    // Add the input to the scene
-                    const sceneItem = scene.add(input);
+                        // Add the input to the scene
+                        const sceneItem = scene.add(input);
 
-                    if (sceneItem) {
-                        // Position the source based on monitor location
-                        // Normalize position so leftmost/topmost is at 0,0
-                        const posX = display.bounds.x - minX;
-                        const posY = display.bounds.y - minY;
+                        if (sceneItem) {
+                            // Position the source based on monitor location
+                            const posX = display.bounds.x - minX;
+                            const posY = display.bounds.y - minY;
 
-                        sceneItem.position = { x: posX, y: posY };
-                        console.log(`Positioned ${sourceName} at (${posX}, ${posY})`);
+                            sceneItem.position = { x: posX, y: posY };
+                            console.log(`Positioned ${sourceName} at (${posX}, ${posY})`);
+                        } else {
+                            console.error(`Failed to add ${sourceName} to scene`);
+                        }
                     } else {
-                        console.error(`Failed to add ${sourceName} to scene`);
+                        console.error(`Failed to create or retrieve input for monitor ${index}`);
                     }
                 } catch (sourceError) {
-                    console.error(`Error creating source for monitor ${index}:`, sourceError);
+                    console.error(`Error handling source for monitor ${index}:`, sourceError);
                 }
             });
 
-            // Add desktop audio capture (Windows)
+            // Add desktop audio capture
             try {
-                const desktopAudio = obs.InputFactory.create('wasapi_output_capture', 'Desktop Audio', {
-                    device_id: 'default'
-                });
+                const daName = 'Desktop Audio';
+                let desktopAudio = obs.InputFactory.create('wasapi_output_capture', daName, { device_id: 'default' });
+                if (!desktopAudio) {
+                    try { desktopAudio = obs.InputFactory.fromName(daName); } catch (e) { }
+                }
+
                 if (desktopAudio) {
-                    // Set desktop audio as an audio output source (channel 1 is typically desktop audio)
                     obs.Global.setOutputSource(1, desktopAudio);
                     console.log("Added desktop audio capture");
                 }
@@ -430,13 +521,15 @@ export class OBSManager {
                 console.error("Error adding desktop audio:", audioError);
             }
 
-            // Optionally add microphone capture
+            // Add microphone capture
             try {
-                const micAudio = obs.InputFactory.create('wasapi_input_capture', 'Microphone', {
-                    device_id: 'default'
-                });
+                const micName = 'Microphone';
+                let micAudio = obs.InputFactory.create('wasapi_input_capture', micName, { device_id: 'default' });
+                if (!micAudio) {
+                    try { micAudio = obs.InputFactory.fromName(micName); } catch (e) { }
+                }
+
                 if (micAudio) {
-                    // Set mic audio as input source (channel 3 is typically mic)
                     obs.Global.setOutputSource(3, micAudio);
                     console.log("Added microphone capture");
                 }
@@ -444,18 +537,13 @@ export class OBSManager {
                 console.error("Error adding microphone:", micError);
             }
 
-            // Set this scene as the active scene for streaming/recording
-            // obs.NodeObs uses Global.setOutputSource for output channel assignment
-            // Channel 0 is typically the main output
+            // Set this scene as the active scene
             obs.Global.setOutputSource(0, scene.source);
             console.log("Set scene as output source");
 
         } catch (error) {
             console.error("Error setting up scene:", error);
         }
-
-        // Start the replay buffer after scene setup
-        this.startReplayBuffer();
     }
 
     /**
@@ -608,10 +696,39 @@ export class OBSManager {
         if (monitorIndex === 'all') {
             // Process ALL monitors separately
             console.log("Splitting mega-canvas into separate monitor files...");
-            const results = await Promise.all(displays.map((_, i) => processOne(i)));
+
+            // Filter only enabled monitors
+            const settings = SettingsManager.getInstance().getAllSettings();
+            const enabledIndices = settings.enabledMonitors;
+
+            let monitorsToProcess = displays.map((_, i) => i);
+            if (enabledIndices) {
+                monitorsToProcess = monitorsToProcess.filter(i => enabledIndices.includes(i));
+            }
+
+            const results = await Promise.all(monitorsToProcess.map(i => processOne(i)));
+
+            // Delete the original mega-canvas file after successfully splitting
+            try {
+                fs.unlinkSync(filePath);
+                console.log('Deleted original mega-canvas file:', filePath);
+            } catch (deleteErr) {
+                console.error('Failed to delete original mega-canvas file:', deleteErr);
+            }
+
             return results;
         } else {
-            return processOne(monitorIndex as number);
+            const result = await processOne(monitorIndex as number);
+
+            // Delete the original mega-canvas file after successfully cropping
+            try {
+                fs.unlinkSync(filePath);
+                console.log('Deleted original mega-canvas file:', filePath);
+            } catch (deleteErr) {
+                console.error('Failed to delete original mega-canvas file:', deleteErr);
+            }
+
+            return result;
         }
     }
 

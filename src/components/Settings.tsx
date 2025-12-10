@@ -11,10 +11,21 @@ interface AppSettings {
     captureDesktopAudio: boolean;
     captureMicrophone: boolean;
     replayHotkey: string;
+    enabledMonitors?: number[];
+}
+
+interface MonitorInfo {
+    id: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    index: number;
 }
 
 const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const [settings, setSettings] = useState<AppSettings | null>(null);
+    const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
@@ -39,12 +50,7 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     // Preset options
     const fpsOptions = [30, 60, 120];
-    const bitratePresets = [
-        { label: 'Low (6 Mbps)', value: 6000 },
-        { label: 'Medium (12 Mbps)', value: 12000 },
-        { label: 'High (20 Mbps)', value: 20000 },
-        { label: 'Ultra (50 Mbps)', value: 50000 },
-    ];
+
 
     const formatOptions = ['mp4', 'mkv', 'flv'] as const;
 
@@ -57,6 +63,10 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             // @ts-ignore
             const s = await window.electronAPI?.getSettings();
             setSettings(s);
+
+            // @ts-ignore
+            const m = await window.electronAPI?.getMonitors();
+            setMonitors(m || []);
         } catch (err) {
             console.error('Failed to load settings:', err);
         } finally {
@@ -68,6 +78,32 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (!settings) return;
         setSettings({ ...settings, [key]: value });
         setHasChanges(true);
+    };
+
+    const handleMonitorToggle = (index: number, checked: boolean) => {
+        if (!settings) return;
+
+        let current = settings.enabledMonitors;
+        // If undefined, it means "all enabled". Initialize it with all monitor indices first
+        if (!current) {
+            current = monitors.map(m => m.index);
+        }
+
+        let next: number[];
+        if (checked) {
+            if (!current.includes(index)) {
+                next = [...current, index];
+            } else {
+                next = current;
+            }
+        } else {
+            next = current.filter(i => i !== index);
+        }
+
+        // Sort just in case
+        next.sort((a, b) => a - b);
+
+        handleChange('enabledMonitors', next);
     };
 
     const handleHotkeyKeyDown = (e: React.KeyboardEvent) => {
@@ -416,6 +452,38 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 ))}
                             </div>
                             <span className="settings-hint">MP4 is most compatible, MKV supports more features</span>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Monitors Section */}
+                <section className="settings-section">
+                    <h2>Monitors</h2>
+                    <div className="settings-row">
+                        <label>Record Monitors</label>
+                        <div className="settings-input-group">
+                            {monitors.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {monitors.map(m => (
+                                        <label key={m.id} className="settings-checkbox-item" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={!settings.enabledMonitors || settings.enabledMonitors.includes(m.index)}
+                                                onChange={(e) => handleMonitorToggle(m.index, e.target.checked)}
+                                                style={{ width: '18px', height: '18px', accentColor: '#6366f1' }}
+                                            />
+                                            <span style={{ fontSize: '0.95rem', color: '#f3f4f6' }}>
+                                                Monitor {m.index + 1} ({m.width}x{m.height})
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>No monitors detected</div>
+                            )}
+                            <span className="settings-hint" style={{ marginTop: '8px', display: 'block' }}>
+                                Uncheck monitors to exclude them from the Mega-Canvas recording.
+                            </span>
                         </div>
                     </div>
                 </section>
