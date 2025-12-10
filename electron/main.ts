@@ -261,6 +261,17 @@ app.whenReady().then(() => {
     return OBSManager.getInstance().getMonitors()
   })
 
+  ipcMain.handle('save-replay', async () => {
+    try {
+      lastReplayPath = await OBSManager.getInstance().saveReplayBuffer() as string
+      showOverlay()
+      return true
+    } catch (err) {
+      console.error('Failed to save replay:', err)
+      return false
+    }
+  })
+
   ipcMain.handle('select-monitor', async (_event, index) => {
     if (!lastReplayPath) return
     console.log('Selected monitor:', index)

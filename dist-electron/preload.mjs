@@ -32,6 +32,8 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   pickFolder: () => electron.ipcRenderer.invoke("settings-pick-folder"),
   // Restart OBS with new settings
   restartOBS: () => electron.ipcRenderer.invoke("obs-restart"),
+  // Save Replay
+  saveReplay: () => electron.ipcRenderer.invoke("save-replay"),
   // Update hotkeys
   updateHotkey: () => electron.ipcRenderer.invoke("update-hotkey")
 });

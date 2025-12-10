@@ -3845,26 +3845,37 @@ const _OBSManager = class _OBSManager {
     if (!fs.existsSync(filePath)) {
       throw new Error(`Replay file not found: ${filePath}`);
     }
-    if (monitorIndex === "all") {
-      const dest = filePath.replace(".mp4", "-all.mp4");
-      fs.copyFileSync(filePath, dest);
-      return dest;
-    }
     const displays = this.getMonitors();
-    const monitor = displays[monitorIndex];
-    if (!monitor) throw new Error("Monitor not found");
-    const output2 = filePath.replace(".mp4", `-monitor${monitorIndex}.mp4`);
-    return new Promise((resolve, reject) => {
-      ffmpeg(filePath).videoFilters([
-        `crop=${monitor.width}:${monitor.height}:${monitor.x}:${monitor.y}`
-      ]).output(output2).on("end", () => {
-        console.log("Processing finished:", output2);
-        resolve(output2);
-      }).on("error", (err) => {
-        console.error("Error processing:", err);
-        reject(err);
-      }).run();
+    let minX = 0, minY = 0;
+    displays.forEach((d, i) => {
+      if (i === 0 || d.x < minX) minX = d.x;
+      if (i === 0 || d.y < minY) minY = d.y;
     });
+    const processOne = (index) => {
+      const monitor = displays[index];
+      if (!monitor) return Promise.reject(new Error("Monitor not found"));
+      const cropX = monitor.x - minX;
+      const cropY = monitor.y - minY;
+      const output2 = filePath.replace(/(\.[^.]+)$/, `-monitor-${index + 1}$1`);
+      return new Promise((resolve, reject) => {
+        ffmpeg(filePath).videoFilters([
+          `crop=${monitor.width}:${monitor.height}:${cropX}:${cropY}`
+        ]).output(output2).on("end", () => {
+          console.log("Processing finished:", output2);
+          resolve(output2);
+        }).on("error", (err) => {
+          console.error("Error processing:", err);
+          reject(err);
+        }).run();
+      });
+    };
+    if (monitorIndex === "all") {
+      console.log("Splitting mega-canvas into separate monitor files...");
+      const results = await Promise.all(displays.map((_, i) => processOne(i)));
+      return results;
+    } else {
+      return processOne(monitorIndex);
+    }
   }
   /**
    * Cleanup OBS resources on app exit
@@ -4079,6 +4090,16 @@ app.whenReady().then(() => {
   });
   ipcMain.handle("get-monitors", () => {
     return OBSManager.getInstance().getMonitors();
+  });
+  ipcMain.handle("save-replay", async () => {
+    try {
+      lastReplayPath = await OBSManager.getInstance().saveReplayBuffer();
+      showOverlay();
+      return true;
+    } catch (err) {
+      console.error("Failed to save replay:", err);
+      return false;
+    }
   });
   ipcMain.handle("select-monitor", async (_event, index) => {
     if (!lastReplayPath) return;

@@ -566,36 +566,53 @@ export class OBSManager {
             throw new Error(`Replay file not found: ${filePath}`);
         }
 
-        if (monitorIndex === 'all') {
-            // Just move or rename the file
-            const dest = filePath.replace('.mp4', '-all.mp4'); // Example logic
-            fs.copyFileSync(filePath, dest);
-            return dest;
-        }
-
         const displays = this.getMonitors();
-        const monitor = displays[monitorIndex as number];
 
-        if (!monitor) throw new Error("Monitor not found");
-
-        const output = filePath.replace('.mp4', `-monitor${monitorIndex}.mp4`);
-
-        return new Promise((resolve, reject) => {
-            ffmpeg(filePath)
-                .videoFilters([
-                    `crop=${monitor.width}:${monitor.height}:${monitor.x}:${monitor.y}`
-                ])
-                .output(output)
-                .on('end', () => {
-                    console.log('Processing finished:', output);
-                    resolve(output);
-                })
-                .on('error', (err) => {
-                    console.error('Error processing:', err);
-                    reject(err);
-                })
-                .run();
+        // Calculate the bounding box and min offsets to interpret coordinates correctly
+        let minX = 0, minY = 0;
+        displays.forEach((d, i) => {
+            if (i === 0 || d.x < minX) minX = d.x;
+            if (i === 0 || d.y < minY) minY = d.y;
         });
+
+        const processOne = (index: number): Promise<string> => {
+            const monitor = displays[index];
+            if (!monitor) return Promise.reject(new Error("Monitor not found"));
+
+            // Calculate crop coordinates relative to the canvas origin
+            // The canvas starts at (minX, minY)
+            const cropX = monitor.x - minX;
+            const cropY = monitor.y - minY;
+
+            // Output filename: Replay 2024... -> Replay 2024...-monitor-1.mp4
+            const output = filePath.replace(/(\.[^.]+)$/, `-monitor-${index + 1}$1`);
+
+            return new Promise((resolve, reject) => {
+                ffmpeg(filePath)
+                    .videoFilters([
+                        `crop=${monitor.width}:${monitor.height}:${cropX}:${cropY}`
+                    ])
+                    .output(output)
+                    .on('end', () => {
+                        console.log('Processing finished:', output);
+                        resolve(output);
+                    })
+                    .on('error', (err) => {
+                        console.error('Error processing:', err);
+                        reject(err);
+                    })
+                    .run();
+            });
+        };
+
+        if (monitorIndex === 'all') {
+            // Process ALL monitors separately
+            console.log("Splitting mega-canvas into separate monitor files...");
+            const results = await Promise.all(displays.map((_, i) => processOne(i)));
+            return results;
+        } else {
+            return processOne(monitorIndex as number);
+        }
     }
 
     /**

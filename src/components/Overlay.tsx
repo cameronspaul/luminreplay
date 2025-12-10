@@ -35,11 +35,11 @@ const Overlay: React.FC = () => {
                 ))}
 
                 <div
-                    className="monitor-card mega-canvas"
+                    className="monitor-card"
                     onClick={() => handleSelect('all')}
                 >
                     <div className="monitor-name">Save All</div>
-                    <div className="monitor-res">Mega-Canvas</div>
+                    <div className="monitor-res">All Screens</div>
                 </div>
             </div>
 

@@ -77,15 +77,7 @@
     box-shadow: 0 4px 15px rgba(74, 222, 128, 0.1);
 }
 
-.monitor-card.mega-canvas {
-    border-color: rgba(74, 222, 128, 0.3);
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, rgba(74, 222, 128, 0.05) 100%);
-    margin-top: 0.5rem;
-}
 
-.monitor-card.mega-canvas:hover {
-    border-color: #4ade80;
-}
 
 .monitor-name {
     font-size: 1rem;

@@ -43,18 +43,23 @@ function App() {
           </div>
         </div>
 
-        <p className="info-text">
-          Press the hotkey to save the last few seconds of your screen.
-          <br />
-          You'll be able to choose which monitor to save.
-        </p>
-
-        <button
-          className="settings-button"
-          onClick={() => setShowSettings(true)}
-        >
-          Settings
-        </button>
+        <div className="button-group">
+          <button
+            className="primary-button"
+            onClick={() => {
+              // @ts-ignore
+              window.electronAPI.saveReplay()
+            }}
+          >
+            Save Replay
+          </button>
+          <button
+            className="secondary-button"
+            onClick={() => setShowSettings(true)}
+          >
+            Settings
+          </button>
+        </div>
       </div>
     </div>
   )
