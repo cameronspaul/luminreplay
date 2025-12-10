@@ -6,6 +6,7 @@ interface AppSettings {
     replayBufferMaxSize: number;
     videoBitrate: number;
     videoEncoder: string;
+    encoderPreset: 'performance' | 'balanced' | 'quality';
     fps: number;
     recordingFormat: 'mp4' | 'mkv' | 'flv';
     recordingPath: string;
@@ -42,8 +43,8 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             if (settings.replayBufferDuration > 180 || settings.replayBufferDuration % 10 !== 0) {
                 setIsCustomDuration(true);
             }
-            // If bitrate is > 80000 (10000 KBps) or not a multiple of 400 (50 KBps), default to custom mode
-            if (settings.videoBitrate > 80000 || settings.videoBitrate % 400 !== 0) {
+            // If bitrate is > 50000 kbps or not a multiple of 1000, default to custom mode
+            if (settings.videoBitrate > 50000 || settings.videoBitrate % 1000 !== 0) {
                 setIsCustomBitrate(true);
             }
         }
@@ -377,20 +378,53 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     </div>
 
                     <div className="settings-row">
+                        <label>Encoder Preset</label>
+                        <div className="settings-input-group">
+                            <div className="settings-toggle-group">
+                                <button
+                                    className={`settings-toggle-btn ${settings.encoderPreset === 'performance' ? 'active' : ''}`}
+                                    onClick={() => handleChange('encoderPreset', 'performance')}
+                                >
+                                    Performance
+                                </button>
+                                <button
+                                    className={`settings-toggle-btn ${settings.encoderPreset === 'balanced' ? 'active' : ''}`}
+                                    onClick={() => handleChange('encoderPreset', 'balanced')}
+                                >
+                                    Balanced
+                                </button>
+                                <button
+                                    className={`settings-toggle-btn ${settings.encoderPreset === 'quality' ? 'active' : ''}`}
+                                    onClick={() => handleChange('encoderPreset', 'quality')}
+                                >
+                                    Quality
+                                </button>
+                            </div>
+                            <span className="settings-hint">
+                                {settings.encoderPreset === 'performance'
+                                    ? 'Lowest GPU usage - similar to ShadowPlay. Recommended for gaming.'
+                                    : settings.encoderPreset === 'balanced'
+                                        ? 'Moderate GPU usage with improved visual quality.'
+                                        : 'Highest quality but uses more GPU. Best for content creation.'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="settings-row">
                         <label>Video Bitrate</label>
                         <div className="settings-input-group">
                             {!isCustomBitrate ? (
                                 <div className="settings-slider-container">
                                     <input
                                         type="range"
-                                        min="500"
-                                        max="8000"
-                                        step="100"
-                                        value={Math.round(settings.videoBitrate / 8)}
-                                        onChange={(e) => handleChange('videoBitrate', Number(e.target.value) * 8)}
+                                        min="1000"
+                                        max="50000"
+                                        step="1000"
+                                        value={settings.videoBitrate}
+                                        onChange={(e) => handleChange('videoBitrate', Number(e.target.value))}
                                     />
                                     <span className="settings-slider-value">
-                                        {Math.round(settings.videoBitrate / 8)} KBps
+                                        {settings.videoBitrate >= 1000 ? `${(settings.videoBitrate / 1000).toFixed(0)} Mbps` : `${settings.videoBitrate} kbps`}
                                     </span>
                                     <button
                                         className="settings-toggle-btn"
@@ -414,14 +448,14 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                     }}>
                                         <input
                                             type="number"
-                                            min="100"
-                                            value={Math.round(settings.videoBitrate / 8) || ''}
-                                            onChange={(e) => handleChange('videoBitrate', (parseInt(e.target.value) || 0) * 8)}
+                                            min="500"
+                                            value={settings.videoBitrate || ''}
+                                            onChange={(e) => handleChange('videoBitrate', parseInt(e.target.value) || 0)}
                                             onBlur={() => {
-                                                if (settings.videoBitrate < 800) handleChange('videoBitrate', 800);
+                                                if (settings.videoBitrate < 500) handleChange('videoBitrate', 500);
                                             }}
                                             className="settings-number-input-custom"
-                                            placeholder="KBps"
+                                            placeholder="kbps"
                                             style={{
                                                 flex: 1,
                                                 background: 'transparent',
@@ -442,13 +476,13 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                         onClick={() => {
                                             setIsCustomBitrate(false);
                                             // Clamp/Snap logic for returning to slider
-                                            if (settings.videoBitrate > 64000) {
-                                                handleChange('videoBitrate', 64000);
-                                            } else if (settings.videoBitrate < 4000) {
-                                                handleChange('videoBitrate', 4000);
+                                            if (settings.videoBitrate > 50000) {
+                                                handleChange('videoBitrate', 50000);
+                                            } else if (settings.videoBitrate < 1000) {
+                                                handleChange('videoBitrate', 1000);
                                             } else {
-                                                // Round to nearest 800 (100 KBps)
-                                                handleChange('videoBitrate', Math.round(settings.videoBitrate / 800) * 800);
+                                                // Round to nearest 1000 kbps
+                                                handleChange('videoBitrate', Math.round(settings.videoBitrate / 1000) * 1000);
                                             }
                                         }}
                                         style={{ whiteSpace: 'nowrap' }}

@@ -3365,6 +3365,8 @@ const defaultSettings = {
   videoBitrate: 24e3,
   videoEncoder: "jim_nvenc_h264",
   // Default to NVENC
+  encoderPreset: "performance",
+  // Default to lowest GPU usage
   fps: 60,
   recordingFormat: "mp4",
   recordingPath: "",
@@ -3690,6 +3692,7 @@ const _OBSManager = class _OBSManager {
    * Configure output settings for replay buffer
    */
   setupOutput() {
+    var _a, _b;
     if (!this.initialized || !obs) return;
     const settings = SettingsManager.getInstance().getAllSettings();
     console.log("Configuring output settings...");
@@ -3706,6 +3709,7 @@ const _OBSManager = class _OBSManager {
           if (category.parameters) {
             for (const param of category.parameters) {
               if (param.name === paramName) {
+                console.log(`    [UPDATE] ${paramName}: ${param.currentValue} -> ${value}`);
                 param.currentValue = value;
                 param.value = value;
                 return true;
@@ -3713,25 +3717,81 @@ const _OBSManager = class _OBSManager {
             }
           }
         }
+        console.log(`    [NOT FOUND] ${paramName}`);
         return false;
       };
-      updateSetting(outputSettings, "Mode", "Simple");
+      updateSetting(outputSettings, "Mode", "Advanced");
+      obs.NodeObs.OBS_settings_saveSettings("Output", outputSettings);
+      let advancedSettings = ((_a = obs.NodeObs.OBS_settings_getSettings("Output")) == null ? void 0 : _a.data) || [];
       const recordingPath = settings.recordingPath || path$2.join(app.getPath("videos"), "LuminReplay");
       if (!fs.existsSync(recordingPath)) {
         fs.mkdirSync(recordingPath, { recursive: true });
       }
-      updateSetting(outputSettings, "FilePath", recordingPath);
-      updateSetting(outputSettings, "RecFormat", settings.recordingFormat);
-      console.log(`  - Setting bitrate: ${settings.videoBitrate} kbps`);
-      updateSetting(outputSettings, "VBitrate", settings.videoBitrate);
-      console.log(`  - Video Encoder: ${settings.videoEncoder}`);
-      updateSetting(outputSettings, "StreamEncoder", settings.videoEncoder);
-      updateSetting(outputSettings, "RecEncoder", settings.videoEncoder);
-      updateSetting(outputSettings, "RecQuality", "Stream");
-      updateSetting(outputSettings, "RecRB", true);
-      updateSetting(outputSettings, "RecRBTime", settings.replayBufferDuration);
-      updateSetting(outputSettings, "RecRBSize", settings.replayBufferMaxSize);
-      obs.NodeObs.OBS_settings_saveSettings("Output", outputSettings);
+      updateSetting(advancedSettings, "RecFilePath", recordingPath);
+      updateSetting(advancedSettings, "RecFormat", settings.recordingFormat);
+      updateSetting(advancedSettings, "RecType", "Standard");
+      let advancedEncoder = settings.videoEncoder;
+      if (settings.videoEncoder === "jim_nvenc_h264") {
+        advancedEncoder = "jim_nvenc";
+      } else if (settings.videoEncoder === "x264") {
+        advancedEncoder = "obs_x264";
+      }
+      console.log(`  - Setting encoder: ${advancedEncoder} (from ${settings.videoEncoder})`);
+      updateSetting(advancedSettings, "RecEncoder", advancedEncoder);
+      obs.NodeObs.OBS_settings_saveSettings("Output", advancedSettings);
+      advancedSettings = ((_b = obs.NodeObs.OBS_settings_getSettings("Output")) == null ? void 0 : _b.data) || [];
+      console.log("=== Recording settings after encoder selection ===");
+      for (const category of advancedSettings) {
+        if (category.nameSubCategory === "Recording") {
+          if (category.parameters) {
+            for (const param of category.parameters) {
+              console.log(`  - ${param.name}: ${param.currentValue}`);
+            }
+          }
+        }
+      }
+      console.log("=== END ===");
+      console.log(`  - Setting rate control to CQP for efficiency`);
+      updateSetting(advancedSettings, "Recrate_control", "CQP");
+      const cqpValues = {
+        "performance": 23,
+        // Lighter encoding, smaller files
+        "balanced": 21,
+        // Good balance
+        "quality": 18
+        // Best quality, larger files
+      };
+      const cqp = cqpValues[settings.encoderPreset] || 21;
+      console.log(`  - Setting CQP to ${cqp} (preset: ${settings.encoderPreset})`);
+      updateSetting(advancedSettings, "Reccqp", cqp);
+      updateSetting(advancedSettings, "Recmax_bitrate", settings.videoBitrate);
+      const presetMap = {
+        "performance": "p1",
+        // Fastest, lowest GPU usage (like ShadowPlay)
+        "balanced": "p4",
+        // Middle ground
+        "quality": "p7"
+        // Best quality, highest GPU usage
+      };
+      const nvencPreset = presetMap[settings.encoderPreset] || "p1";
+      console.log(`  - Setting NVENC preset to ${nvencPreset}`);
+      updateSetting(advancedSettings, "Recpreset", nvencPreset);
+      if (settings.encoderPreset === "performance") {
+        updateSetting(advancedSettings, "Reclookahead", false);
+        updateSetting(advancedSettings, "Recpsycho_aq", false);
+        updateSetting(advancedSettings, "Recbframes", 0);
+      } else if (settings.encoderPreset === "balanced") {
+        updateSetting(advancedSettings, "Reclookahead", false);
+        updateSetting(advancedSettings, "Recpsycho_aq", true);
+        updateSetting(advancedSettings, "Recbframes", 0);
+      } else {
+        updateSetting(advancedSettings, "Reclookahead", true);
+        updateSetting(advancedSettings, "Recpsycho_aq", true);
+        updateSetting(advancedSettings, "Recbframes", 2);
+      }
+      updateSetting(advancedSettings, "RecRB", true);
+      updateSetting(advancedSettings, "RecRBTime", settings.replayBufferDuration);
+      obs.NodeObs.OBS_settings_saveSettings("Output", advancedSettings);
       console.log("Output settings configured. Replay path:", recordingPath);
     } catch (error) {
       console.error("Error configuring output settings:", error);
@@ -3770,7 +3830,11 @@ const _OBSManager = class _OBSManager {
         try {
           const inputSettings = {
             monitor: index,
-            capture_cursor: true
+            capture_cursor: true,
+            // Use DXGI duplication for more efficient capture
+            // (This is the default on Windows 8+, but explicitly set)
+            method: 0
+            // 0 = Auto (DXGI on Win8+), 1 = WGC, 2 = DXGI
           };
           let input = obs.InputFactory.create("monitor_capture", sourceName, inputSettings);
           if (!input) {

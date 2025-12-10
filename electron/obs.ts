@@ -369,6 +369,7 @@ export class OBSManager {
                     if (category.parameters) {
                         for (const param of category.parameters) {
                             if (param.name === paramName) {
+                                console.log(`    [UPDATE] ${paramName}: ${param.currentValue} -> ${value}`);
                                 param.currentValue = value;
                                 param.value = value;
                                 return true;
@@ -376,48 +377,117 @@ export class OBSManager {
                         }
                     }
                 }
+                console.log(`    [NOT FOUND] ${paramName}`);
                 return false;
             };
 
-            // Set output mode to Simple
-            updateSetting(outputSettings, 'Mode', 'Simple');
+            // Step 1: Switch to Advanced mode
+            updateSetting(outputSettings, 'Mode', 'Advanced');
+            obs.NodeObs.OBS_settings_saveSettings('Output', outputSettings);
+
+            // Step 2: Re-get settings to see Advanced mode parameters
+            let advancedSettings = obs.NodeObs.OBS_settings_getSettings('Output')?.data || [];
 
             // Configure recording path from settings
             const recordingPath = settings.recordingPath || path.join(app.getPath('videos'), 'LuminReplay');
             if (!fs.existsSync(recordingPath)) {
                 fs.mkdirSync(recordingPath, { recursive: true });
             }
-            updateSetting(outputSettings, 'FilePath', recordingPath);
+            updateSetting(advancedSettings, 'RecFilePath', recordingPath);
 
             // Set recording format from settings
-            updateSetting(outputSettings, 'RecFormat', settings.recordingFormat);
+            updateSetting(advancedSettings, 'RecFormat', settings.recordingFormat);
 
-            // Set streaming bitrate - this is used by recording when RecQuality is "Stream"
-            console.log(`  - Setting bitrate: ${settings.videoBitrate} kbps`);
-            updateSetting(outputSettings, 'VBitrate', settings.videoBitrate);
+            // Set recording type to Standard (not FFmpeg)
+            updateSetting(advancedSettings, 'RecType', 'Standard');
 
-            // Set video encoder
-            // 'jim_nvenc_h264' is for NVIDIA NVENC
-            // 'x264' is for Software (CPU)
-            console.log(`  - Video Encoder: ${settings.videoEncoder}`);
-            updateSetting(outputSettings, 'StreamEncoder', settings.videoEncoder);
-            updateSetting(outputSettings, 'RecEncoder', settings.videoEncoder);
+            // Step 3: Set the encoder - IMPORTANT: use correct name for Advanced mode
+            // 'jim_nvenc_h264' (Simple mode) -> 'jim_nvenc' (Advanced mode)
+            // 'x264' (Simple mode) -> 'obs_x264' (Advanced mode)
+            let advancedEncoder = settings.videoEncoder;
+            if (settings.videoEncoder === 'jim_nvenc_h264') {
+                advancedEncoder = 'jim_nvenc';
+            } else if (settings.videoEncoder === 'x264') {
+                advancedEncoder = 'obs_x264';
+            }
 
-            // IMPORTANT: Set recording quality to "Stream" which uses VBitrate for recording
-            // This is the key to controlling recording bitrate in Simple mode
-            updateSetting(outputSettings, 'RecQuality', 'Stream');
+            console.log(`  - Setting encoder: ${advancedEncoder} (from ${settings.videoEncoder})`);
+            updateSetting(advancedSettings, 'RecEncoder', advancedEncoder);
+
+            // Step 4: Save to register encoder change
+            obs.NodeObs.OBS_settings_saveSettings('Output', advancedSettings);
+
+            // Step 5: Re-fetch settings to get encoder-specific parameters
+            advancedSettings = obs.NodeObs.OBS_settings_getSettings('Output')?.data || [];
+
+            // Debug: show Recording category after encoder selection
+            console.log("=== Recording settings after encoder selection ===");
+            for (const category of advancedSettings) {
+                if (category.nameSubCategory === 'Recording') {
+                    if (category.parameters) {
+                        for (const param of category.parameters) {
+                            console.log(`  - ${param.name}: ${param.currentValue}`);
+                        }
+                    }
+                }
+            }
+            console.log("=== END ===");
+
+            // Step 6: Now set encoder-specific settings (these only appear after encoder is set)
+            // Use CQP (Constant Quality) instead of CBR for lower GPU usage
+            // CQP is more efficient as it doesn't force constant bitrate
+            console.log(`  - Setting rate control to CQP for efficiency`);
+            updateSetting(advancedSettings, 'Recrate_control', 'CQP');
+
+            // CQP quality value based on encoderPreset
+            // Lower = better quality, higher file size
+            const cqpValues = {
+                'performance': 23,  // Lighter encoding, smaller files
+                'balanced': 21,     // Good balance
+                'quality': 18       // Best quality, larger files
+            };
+            const cqp = cqpValues[settings.encoderPreset] || 21;
+            console.log(`  - Setting CQP to ${cqp} (preset: ${settings.encoderPreset})`);
+            updateSetting(advancedSettings, 'Reccqp', cqp);
+
+            // Set max bitrate as a ceiling (for VBR-like behavior within CQP)
+            updateSetting(advancedSettings, 'Recmax_bitrate', settings.videoBitrate);
+
+            // NVENC-specific optimizations based on encoderPreset:
+            // Preset: p1 (fastest/lowest GPU) to p7 (slowest/best quality)
+            const presetMap = {
+                'performance': 'p1',  // Fastest, lowest GPU usage (like ShadowPlay)
+                'balanced': 'p4',     // Middle ground
+                'quality': 'p7'       // Best quality, highest GPU usage
+            };
+            const nvencPreset = presetMap[settings.encoderPreset] || 'p1';
+            console.log(`  - Setting NVENC preset to ${nvencPreset}`);
+            updateSetting(advancedSettings, 'Recpreset', nvencPreset);
+
+            // Tune settings based on preset - performance mode disables everything for minimum GPU
+            if (settings.encoderPreset === 'performance') {
+                updateSetting(advancedSettings, 'Reclookahead', false);  // Disable lookahead
+                updateSetting(advancedSettings, 'Recpsycho_aq', false);  // Disable psycho-visual tuning
+                updateSetting(advancedSettings, 'Recbframes', 0);        // No B-frames (lower latency)
+            } else if (settings.encoderPreset === 'balanced') {
+                updateSetting(advancedSettings, 'Reclookahead', false);
+                updateSetting(advancedSettings, 'Recpsycho_aq', true);   // Enable AQ for better quality
+                updateSetting(advancedSettings, 'Recbframes', 0);
+            } else {
+                // Quality mode - enable all quality features
+                updateSetting(advancedSettings, 'Reclookahead', true);
+                updateSetting(advancedSettings, 'Recpsycho_aq', true);
+                updateSetting(advancedSettings, 'Recbframes', 2);
+            }
 
             // Enable replay buffer
-            updateSetting(outputSettings, 'RecRB', true);
+            updateSetting(advancedSettings, 'RecRB', true);
 
             // Set replay buffer duration from settings
-            updateSetting(outputSettings, 'RecRBTime', settings.replayBufferDuration);
+            updateSetting(advancedSettings, 'RecRBTime', settings.replayBufferDuration);
 
-            // Set replay buffer max size from settings
-            updateSetting(outputSettings, 'RecRBSize', settings.replayBufferMaxSize);
-
-            // Save output settings
-            obs.NodeObs.OBS_settings_saveSettings('Output', outputSettings);
+            // Step 7: Save final settings
+            obs.NodeObs.OBS_settings_saveSettings('Output', advancedSettings);
             console.log("Output settings configured. Replay path:", recordingPath);
 
         } catch (error) {
@@ -473,12 +543,17 @@ export class OBSManager {
                 console.log(`Creating source ${sourceName} for display ${display.id}`);
 
                 try {
+                    // Optimized capture settings for lower GPU usage
                     const inputSettings = {
                         monitor: index,
                         capture_cursor: true,
+                        // Use DXGI duplication for more efficient capture
+                        // (This is the default on Windows 8+, but explicitly set)
+                        method: 0,  // 0 = Auto (DXGI on Win8+), 1 = WGC, 2 = DXGI
                     };
 
-                    // Try to create the input
+                    // Try to create the input with monitor_capture
+                    // Note: game_capture would be more efficient but only captures fullscreen games
                     let input = obs.InputFactory.create('monitor_capture', sourceName, inputSettings);
 
                     // If failed (likely exists), try to retrieve it

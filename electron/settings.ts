@@ -11,6 +11,7 @@ export interface AppSettings {
     // Video Quality Settings
     videoBitrate: number;          // kbps (e.g., 6000, 12000, 30000)
     videoEncoder: string;          // 'jim_nvenc_h264' (hardware) or 'x264' (software)
+    encoderPreset: 'performance' | 'balanced' | 'quality';  // GPU usage vs quality tradeoff
     fps: number;                   // frames per second (30, 60, 120)
 
     // Output Settings
@@ -33,6 +34,7 @@ const defaultSettings: AppSettings = {
     replayBufferMaxSize: 512,
     videoBitrate: 24000,
     videoEncoder: 'jim_nvenc_h264', // Default to NVENC
+    encoderPreset: 'performance',   // Default to lowest GPU usage
     fps: 60,
     recordingFormat: 'mp4',
     recordingPath: '',  // Will be set on first run
