@@ -3,6 +3,14 @@ import path from 'path';
 import fs from 'fs';
 
 // Default settings for LuminReplay
+// Resolution preset type - 'native' uses monitor resolution, 'custom' uses customResolution values
+export type ResolutionPreset = 'native' | '1080p' | '720p' | '480p' | 'custom';
+
+export interface CustomResolution {
+    width: number;
+    height: number;
+}
+
 export interface AppSettings {
     // Replay Buffer Settings
     replayBufferDuration: number;  // seconds (e.g., 30, 60, 120)
@@ -13,6 +21,12 @@ export interface AppSettings {
     videoEncoder: string;          // 'jim_nvenc_h264' (hardware) or 'x264' (software)
     encoderPreset: 'performance' | 'balanced' | 'quality';  // GPU usage vs quality tradeoff
     fps: number;                   // frames per second (30, 60, 120)
+
+    // Resolution Settings
+    captureResolution: ResolutionPreset;     // Resolution to capture at
+    outputResolution: ResolutionPreset;      // Resolution to output/save at
+    customCaptureResolution?: CustomResolution;  // Custom capture resolution if preset is 'custom'
+    customOutputResolution?: CustomResolution;   // Custom output resolution if preset is 'custom'
 
     // Output Settings
     recordingFormat: 'mp4' | 'mkv' | 'flv';
@@ -36,6 +50,10 @@ const defaultSettings: AppSettings = {
     videoEncoder: 'jim_nvenc_h264', // Default to NVENC
     encoderPreset: 'performance',   // Default to lowest GPU usage
     fps: 60,
+    captureResolution: 'native',    // Default to native monitor resolution
+    outputResolution: 'native',     // Default to native monitor resolution
+    customCaptureResolution: { width: 1920, height: 1080 },
+    customOutputResolution: { width: 1920, height: 1080 },
     recordingFormat: 'mp4',
     recordingPath: '',  // Will be set on first run
     captureDesktopAudio: true,

@@ -3368,6 +3368,12 @@ const defaultSettings = {
   encoderPreset: "performance",
   // Default to lowest GPU usage
   fps: 60,
+  captureResolution: "native",
+  // Default to native monitor resolution
+  outputResolution: "native",
+  // Default to native monitor resolution
+  customCaptureResolution: { width: 1920, height: 1080 },
+  customOutputResolution: { width: 1920, height: 1080 },
   recordingFormat: "mp4",
   recordingPath: "",
   // Will be set on first run
@@ -3652,9 +3658,46 @@ const _OBSManager = class _OBSManager {
       if (i === 0 || d.bounds.x + d.bounds.width > maxX) maxX = d.bounds.x + d.bounds.width;
       if (i === 0 || d.bounds.y + d.bounds.height > maxY) maxY = d.bounds.y + d.bounds.height;
     });
-    const totalWidth = maxX - minX;
-    const totalHeight = maxY - minY;
-    console.log(`Configuring OBS Video: ${totalWidth}x${totalHeight} @ ${settings.fps}fps (${displays.length} monitor(s))`);
+    const nativeWidth = maxX - minX;
+    const nativeHeight = maxY - minY;
+    const getResolutionFromPreset = (preset, customRes, nativeW, nativeH) => {
+      switch (preset) {
+        case "1080p": {
+          const scale = 1080 / nativeH;
+          return { width: Math.round(nativeW * scale), height: 1080 };
+        }
+        case "720p": {
+          const scale = 720 / nativeH;
+          return { width: Math.round(nativeW * scale), height: 720 };
+        }
+        case "480p": {
+          const scale = 480 / nativeH;
+          return { width: Math.round(nativeW * scale), height: 480 };
+        }
+        case "custom":
+          return customRes || { width: 1920, height: 1080 };
+        case "native":
+        default:
+          return { width: nativeW, height: nativeH };
+      }
+    };
+    const captureRes = getResolutionFromPreset(
+      settings.captureResolution,
+      settings.customCaptureResolution,
+      nativeWidth,
+      nativeHeight
+    );
+    const outputRes = getResolutionFromPreset(
+      settings.outputResolution,
+      settings.customOutputResolution,
+      nativeWidth,
+      nativeHeight
+    );
+    console.log(`Configuring OBS Video:`);
+    console.log(`  Native: ${nativeWidth}x${nativeHeight}`);
+    console.log(`  Capture (Base): ${captureRes.width}x${captureRes.height} (${settings.captureResolution})`);
+    console.log(`  Output: ${outputRes.width}x${outputRes.height} (${settings.outputResolution})`);
+    console.log(`  FPS: ${settings.fps} (${displays.length} monitor(s))`);
     try {
       const videoSettingsResult = obs.NodeObs.OBS_settings_getSettings("Video");
       const videoSettings = (videoSettingsResult == null ? void 0 : videoSettingsResult.data) || [];
@@ -3672,8 +3715,8 @@ const _OBSManager = class _OBSManager {
         }
         return false;
       };
-      updateSetting(videoSettings, "Base", `${totalWidth}x${totalHeight}`);
-      updateSetting(videoSettings, "Output", `${totalWidth}x${totalHeight}`);
+      updateSetting(videoSettings, "Base", `${captureRes.width}x${captureRes.height}`);
+      updateSetting(videoSettings, "Output", `${outputRes.width}x${outputRes.height}`);
       updateSetting(videoSettings, "FPSType", "Common FPS Values");
       updateSetting(videoSettings, "FPSCommon", String(settings.fps));
       obs.NodeObs.OBS_settings_saveSettings("Video", videoSettings);
@@ -3990,20 +4033,61 @@ const _OBSManager = class _OBSManager {
       throw new Error(`Replay file not found: ${filePath}`);
     }
     const displays = this.getMonitors();
-    let minX = 0, minY = 0;
+    const settings = SettingsManager.getInstance().getAllSettings();
+    let minX = 0, minY = 0, maxX = 0, maxY = 0;
     displays.forEach((d, i) => {
       if (i === 0 || d.x < minX) minX = d.x;
       if (i === 0 || d.y < minY) minY = d.y;
+      if (i === 0 || d.x + d.width > maxX) maxX = d.x + d.width;
+      if (i === 0 || d.y + d.height > maxY) maxY = d.y + d.height;
     });
+    const nativeWidth = maxX - minX;
+    const nativeHeight = maxY - minY;
+    const getResolutionFromPreset = (preset, customRes, nativeW, nativeH) => {
+      switch (preset) {
+        case "1080p": {
+          const scale = 1080 / nativeH;
+          return { width: Math.round(nativeW * scale), height: 1080 };
+        }
+        case "720p": {
+          const scale = 720 / nativeH;
+          return { width: Math.round(nativeW * scale), height: 720 };
+        }
+        case "480p": {
+          const scale = 480 / nativeH;
+          return { width: Math.round(nativeW * scale), height: 480 };
+        }
+        case "custom":
+          return customRes || { width: 1920, height: 1080 };
+        case "native":
+        default:
+          return { width: nativeW, height: nativeH };
+      }
+    };
+    const outputRes = getResolutionFromPreset(
+      settings.outputResolution,
+      settings.customOutputResolution,
+      nativeWidth,
+      nativeHeight
+    );
+    const scaleX = outputRes.width / nativeWidth;
+    const scaleY = outputRes.height / nativeHeight;
+    console.log(`Processing with resolution settings:`);
+    console.log(`  Native: ${nativeWidth}x${nativeHeight}`);
+    console.log(`  Output: ${outputRes.width}x${outputRes.height}`);
+    console.log(`  Scale: ${scaleX.toFixed(3)}x${scaleY.toFixed(3)}`);
     const processOne = (index) => {
       const monitor = displays[index];
       if (!monitor) return Promise.reject(new Error("Monitor not found"));
-      const cropX = monitor.x - minX;
-      const cropY = monitor.y - minY;
+      const cropX = Math.round((monitor.x - minX) * scaleX);
+      const cropY = Math.round((monitor.y - minY) * scaleY);
+      const cropW = Math.round(monitor.width * scaleX);
+      const cropH = Math.round(monitor.height * scaleY);
       const output2 = filePath.replace(/(\.[^.]+)$/, `-monitor-${index + 1}$1`);
+      console.log(`Cropping monitor ${index + 1}: ${cropW}x${cropH} at (${cropX}, ${cropY})`);
       return new Promise((resolve, reject) => {
         ffmpeg(filePath).videoFilters([
-          `crop=${monitor.width}:${monitor.height}:${cropX}:${cropY}`
+          `crop=${cropW}:${cropH}:${cropX}:${cropY}`
         ]).output(output2).on("end", () => {
           console.log("Processing finished:", output2);
           resolve(output2);
@@ -4015,7 +4099,6 @@ const _OBSManager = class _OBSManager {
     };
     if (monitorIndex === "all") {
       console.log("Splitting mega-canvas into separate monitor files...");
-      const settings = SettingsManager.getInstance().getAllSettings();
       const enabledIndices = settings.enabledMonitors;
       let monitorsToProcess = displays.map((_, i) => i);
       if (enabledIndices) {

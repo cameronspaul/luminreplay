@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import './Settings.css';
 
+type ResolutionPreset = 'native' | '1080p' | '720p' | '480p' | 'custom';
+
+interface CustomResolution {
+    width: number;
+    height: number;
+}
+
 interface AppSettings {
     replayBufferDuration: number;
     replayBufferMaxSize: number;
@@ -8,6 +15,10 @@ interface AppSettings {
     videoEncoder: string;
     encoderPreset: 'performance' | 'balanced' | 'quality';
     fps: number;
+    captureResolution: ResolutionPreset;
+    outputResolution: ResolutionPreset;
+    customCaptureResolution?: CustomResolution;
+    customOutputResolution?: CustomResolution;
     recordingFormat: 'mp4' | 'mkv' | 'flv';
     recordingPath: string;
     captureDesktopAudio: boolean;
@@ -53,6 +64,15 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     // Preset options
     const fpsOptions = [30, 60, 120];
 
+    // Resolution presets
+    const resolutionPresets: ResolutionPreset[] = ['native', '1080p', '720p', '480p', 'custom'];
+    const resolutionLabels: Record<ResolutionPreset, string> = {
+        'native': 'Native',
+        '1080p': '1080p',
+        '720p': '720p',
+        '480p': '480p',
+        'custom': 'Custom'
+    };
 
     const formatOptions = ['mp4', 'mkv', 'flv'] as const;
 
@@ -510,6 +530,106 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 ))}
                             </div>
                             <span className="settings-hint">MP4 is most compatible, MKV supports more features</span>
+                        </div>
+                    </div>
+
+                    <div className="settings-row">
+                        <label>Resolution</label>
+                        <div className="settings-input-group">
+                            <div className="settings-resolution-pair">
+                                {/* Capture Resolution */}
+                                <div className="settings-resolution-wrapper">
+                                    <div className="settings-resolution-label">
+                                        <span className="resolution-type">📹 Capture Resolution</span>
+                                    </div>
+                                    <div className="settings-resolution-presets">
+                                        {resolutionPresets.map(preset => (
+                                            <button
+                                                key={`capture-${preset}`}
+                                                className={`settings-toggle-btn ${settings.captureResolution === preset ? 'active' : ''}`}
+                                                onClick={() => handleChange('captureResolution', preset)}
+                                            >
+                                                {resolutionLabels[preset]}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {settings.captureResolution === 'custom' && (
+                                        <div className="settings-resolution-custom-inputs">
+                                            <input
+                                                type="number"
+                                                min="320"
+                                                max="7680"
+                                                value={settings.customCaptureResolution?.width || 1920}
+                                                onChange={(e) => handleChange('customCaptureResolution', {
+                                                    width: parseInt(e.target.value) || 1920,
+                                                    height: settings.customCaptureResolution?.height || 1080
+                                                })}
+                                                placeholder="Width"
+                                            />
+                                            <span className="resolution-x">×</span>
+                                            <input
+                                                type="number"
+                                                min="240"
+                                                max="4320"
+                                                value={settings.customCaptureResolution?.height || 1080}
+                                                onChange={(e) => handleChange('customCaptureResolution', {
+                                                    width: settings.customCaptureResolution?.width || 1920,
+                                                    height: parseInt(e.target.value) || 1080
+                                                })}
+                                                placeholder="Height"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Output Resolution */}
+                                <div className="settings-resolution-wrapper">
+                                    <div className="settings-resolution-label">
+                                        <span className="resolution-type">💾 Output Resolution</span>
+                                    </div>
+                                    <div className="settings-resolution-presets">
+                                        {resolutionPresets.map(preset => (
+                                            <button
+                                                key={`output-${preset}`}
+                                                className={`settings-toggle-btn ${settings.outputResolution === preset ? 'active' : ''}`}
+                                                onClick={() => handleChange('outputResolution', preset)}
+                                            >
+                                                {resolutionLabels[preset]}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {settings.outputResolution === 'custom' && (
+                                        <div className="settings-resolution-custom-inputs">
+                                            <input
+                                                type="number"
+                                                min="320"
+                                                max="7680"
+                                                value={settings.customOutputResolution?.width || 1920}
+                                                onChange={(e) => handleChange('customOutputResolution', {
+                                                    width: parseInt(e.target.value) || 1920,
+                                                    height: settings.customOutputResolution?.height || 1080
+                                                })}
+                                                placeholder="Width"
+                                            />
+                                            <span className="resolution-x">×</span>
+                                            <input
+                                                type="number"
+                                                min="240"
+                                                max="4320"
+                                                value={settings.customOutputResolution?.height || 1080}
+                                                onChange={(e) => handleChange('customOutputResolution', {
+                                                    width: settings.customOutputResolution?.width || 1920,
+                                                    height: parseInt(e.target.value) || 1080
+                                                })}
+                                                placeholder="Height"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <span className="settings-hint">
+                                Lower resolution = better performance. Output resolution affects final saved file size.
+                            </span>
                         </div>
                     </div>
                 </section>

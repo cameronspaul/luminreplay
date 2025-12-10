@@ -280,7 +280,7 @@ export class OBSManager {
             displays.push(...allDisplays);
         }
 
-        // Calculate the bounding box that encompasses enabled monitors
+        // Calculate the bounding box that encompasses enabled monitors (native resolution)
         let minX = 0, minY = 0, maxX = 0, maxY = 0;
 
         displays.forEach((d, i) => {
@@ -290,10 +290,63 @@ export class OBSManager {
             if (i === 0 || d.bounds.y + d.bounds.height > maxY) maxY = d.bounds.y + d.bounds.height;
         });
 
-        const totalWidth = maxX - minX;
-        const totalHeight = maxY - minY;
+        const nativeWidth = maxX - minX;
+        const nativeHeight = maxY - minY;
 
-        console.log(`Configuring OBS Video: ${totalWidth}x${totalHeight} @ ${settings.fps}fps (${displays.length} monitor(s))`);
+        // Helper function to calculate resolution from preset
+        // For presets, we scale proportionally based on height to maintain aspect ratio
+        // This is important for multi-monitor mega-canvas setups (e.g., 3840x1080)
+        const getResolutionFromPreset = (
+            preset: string,
+            customRes: { width: number; height: number } | undefined,
+            nativeW: number,
+            nativeH: number
+        ): { width: number; height: number } => {
+            switch (preset) {
+                case '1080p': {
+                    // Scale proportionally to 1080 height
+                    const scale = 1080 / nativeH;
+                    return { width: Math.round(nativeW * scale), height: 1080 };
+                }
+                case '720p': {
+                    // Scale proportionally to 720 height
+                    const scale = 720 / nativeH;
+                    return { width: Math.round(nativeW * scale), height: 720 };
+                }
+                case '480p': {
+                    // Scale proportionally to 480 height
+                    const scale = 480 / nativeH;
+                    return { width: Math.round(nativeW * scale), height: 480 };
+                }
+                case 'custom':
+                    return customRes || { width: 1920, height: 1080 };
+                case 'native':
+                default:
+                    return { width: nativeW, height: nativeH };
+            }
+        };
+
+        // Calculate capture (base) resolution
+        const captureRes = getResolutionFromPreset(
+            settings.captureResolution,
+            settings.customCaptureResolution,
+            nativeWidth,
+            nativeHeight
+        );
+
+        // Calculate output resolution
+        const outputRes = getResolutionFromPreset(
+            settings.outputResolution,
+            settings.customOutputResolution,
+            nativeWidth,
+            nativeHeight
+        );
+
+        console.log(`Configuring OBS Video:`);
+        console.log(`  Native: ${nativeWidth}x${nativeHeight}`);
+        console.log(`  Capture (Base): ${captureRes.width}x${captureRes.height} (${settings.captureResolution})`);
+        console.log(`  Output: ${outputRes.width}x${outputRes.height} (${settings.outputResolution})`);
+        console.log(`  FPS: ${settings.fps} (${displays.length} monitor(s))`);
 
         try {
             // Get current video settings using the correct API
@@ -317,10 +370,10 @@ export class OBSManager {
             };
 
             // Update video settings
-            // Base (canvas) resolution - format is "WIDTHxHEIGHT"
-            updateSetting(videoSettings, 'Base', `${totalWidth}x${totalHeight}`);
-            // Output (scaled) resolution
-            updateSetting(videoSettings, 'Output', `${totalWidth}x${totalHeight}`);
+            // Base (canvas) resolution - this is what gets captured
+            updateSetting(videoSettings, 'Base', `${captureRes.width}x${captureRes.height}`);
+            // Output (scaled) resolution - this is what gets saved to file
+            updateSetting(videoSettings, 'Output', `${outputRes.width}x${outputRes.height}`);
             // FPS settings - use value from settings
             updateSetting(videoSettings, 'FPSType', 'Common FPS Values');
             updateSetting(videoSettings, 'FPSCommon', String(settings.fps));
@@ -739,30 +792,84 @@ export class OBSManager {
         }
 
         const displays = this.getMonitors();
+        const settings = SettingsManager.getInstance().getAllSettings();
 
-        // Calculate the bounding box and min offsets to interpret coordinates correctly
-        let minX = 0, minY = 0;
+        // Calculate native bounding box
+        let minX = 0, minY = 0, maxX = 0, maxY = 0;
         displays.forEach((d, i) => {
             if (i === 0 || d.x < minX) minX = d.x;
             if (i === 0 || d.y < minY) minY = d.y;
+            if (i === 0 || d.x + d.width > maxX) maxX = d.x + d.width;
+            if (i === 0 || d.y + d.height > maxY) maxY = d.y + d.height;
         });
+
+        const nativeWidth = maxX - minX;
+        const nativeHeight = maxY - minY;
+
+        // Helper function to get resolution from preset (same as in setupVideo)
+        const getResolutionFromPreset = (
+            preset: string,
+            customRes: { width: number; height: number } | undefined,
+            nativeW: number,
+            nativeH: number
+        ): { width: number; height: number } => {
+            switch (preset) {
+                case '1080p': {
+                    const scale = 1080 / nativeH;
+                    return { width: Math.round(nativeW * scale), height: 1080 };
+                }
+                case '720p': {
+                    const scale = 720 / nativeH;
+                    return { width: Math.round(nativeW * scale), height: 720 };
+                }
+                case '480p': {
+                    const scale = 480 / nativeH;
+                    return { width: Math.round(nativeW * scale), height: 480 };
+                }
+                case 'custom':
+                    return customRes || { width: 1920, height: 1080 };
+                case 'native':
+                default:
+                    return { width: nativeW, height: nativeH };
+            }
+        };
+
+        // Get the output resolution that OBS used when recording
+        const outputRes = getResolutionFromPreset(
+            settings.outputResolution,
+            settings.customOutputResolution,
+            nativeWidth,
+            nativeHeight
+        );
+
+        // Calculate scale factor from native to output resolution
+        const scaleX = outputRes.width / nativeWidth;
+        const scaleY = outputRes.height / nativeHeight;
+
+        console.log(`Processing with resolution settings:`);
+        console.log(`  Native: ${nativeWidth}x${nativeHeight}`);
+        console.log(`  Output: ${outputRes.width}x${outputRes.height}`);
+        console.log(`  Scale: ${scaleX.toFixed(3)}x${scaleY.toFixed(3)}`);
 
         const processOne = (index: number): Promise<string> => {
             const monitor = displays[index];
             if (!monitor) return Promise.reject(new Error("Monitor not found"));
 
-            // Calculate crop coordinates relative to the canvas origin
-            // The canvas starts at (minX, minY)
-            const cropX = monitor.x - minX;
-            const cropY = monitor.y - minY;
+            // Calculate crop coordinates relative to the canvas origin, scaled to output resolution
+            const cropX = Math.round((monitor.x - minX) * scaleX);
+            const cropY = Math.round((monitor.y - minY) * scaleY);
+            const cropW = Math.round(monitor.width * scaleX);
+            const cropH = Math.round(monitor.height * scaleY);
 
             // Output filename: Replay 2024... -> Replay 2024...-monitor-1.mp4
             const output = filePath.replace(/(\.[^.]+)$/, `-monitor-${index + 1}$1`);
 
+            console.log(`Cropping monitor ${index + 1}: ${cropW}x${cropH} at (${cropX}, ${cropY})`);
+
             return new Promise((resolve, reject) => {
                 ffmpeg(filePath)
                     .videoFilters([
-                        `crop=${monitor.width}:${monitor.height}:${cropX}:${cropY}`
+                        `crop=${cropW}:${cropH}:${cropX}:${cropY}`
                     ])
                     .output(output)
                     .on('end', () => {
@@ -782,7 +889,6 @@ export class OBSManager {
             console.log("Splitting mega-canvas into separate monitor files...");
 
             // Filter only enabled monitors
-            const settings = SettingsManager.getInstance().getAllSettings();
             const enabledIndices = settings.enabledMonitors;
 
             let monitorsToProcess = displays.map((_, i) => i);
