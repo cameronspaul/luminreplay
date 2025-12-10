@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, shell, screen } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 import { OBSManager } from './obs'
 import SettingsManager from './settings'
 
@@ -26,7 +27,7 @@ function createWindow() {
   Menu.setApplicationMenu(null)
 
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.VITE_PUBLIC, 'lumin.ico'),
     width: 450,
     height: 670,
     resizable: false,
@@ -418,6 +419,30 @@ app.whenReady().then(() => {
         console.error('Error processing replay:', e)
       })
   })
+
+  ipcMain.handle('cancel-save', async () => {
+    console.log('Cancel save requested')
+
+    // Close overlay first
+    if (overlayWindow) {
+      overlayWindow.close()
+      // overlayWindow = null // close() triggers the 'closed' event which sets it to null
+    }
+
+    // Delete the temporary file
+    if (lastReplayPath) {
+      try {
+        if (fs.existsSync(lastReplayPath)) {
+          await fs.promises.unlink(lastReplayPath)
+          console.log('Deleted temporary replay file:', lastReplayPath)
+        }
+      } catch (e) {
+        console.error('Error deleting temporary replay file:', e)
+      }
+      lastReplayPath = null
+    }
+  })
+
 
   console.log('LuminReplay is running in the system tray')
 })

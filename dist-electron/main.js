@@ -4,6 +4,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 import { app, ipcMain, dialog, screen, globalShortcut, BrowserWindow, Menu, nativeImage, Tray, shell } from "electron";
 import { fileURLToPath as fileURLToPath$1 } from "node:url";
 import path$3 from "node:path";
+import fs$1 from "node:fs";
 import path$2 from "path";
 import fs from "fs";
 import require$$1$1 from "util";
@@ -25,7 +26,7 @@ function requireWindows() {
   hasRequiredWindows = 1;
   windows = isexe2;
   isexe2.sync = sync2;
-  var fs$1 = fs;
+  var fs$12 = fs;
   function checkPathExt(path2, options) {
     var pathext = options.pathExt !== void 0 ? options.pathExt : process.env.PATHEXT;
     if (!pathext) {
@@ -50,12 +51,12 @@ function requireWindows() {
     return checkPathExt(path2, options);
   }
   function isexe2(path2, options, cb) {
-    fs$1.stat(path2, function(er, stat) {
+    fs$12.stat(path2, function(er, stat) {
       cb(er, er ? false : checkStat(stat, path2, options));
     });
   }
   function sync2(path2, options) {
-    return checkStat(fs$1.statSync(path2), path2, options);
+    return checkStat(fs$12.statSync(path2), path2, options);
   }
   return windows;
 }
@@ -66,14 +67,14 @@ function requireMode() {
   hasRequiredMode = 1;
   mode = isexe2;
   isexe2.sync = sync2;
-  var fs$1 = fs;
+  var fs$12 = fs;
   function isexe2(path2, options, cb) {
-    fs$1.stat(path2, function(er, stat) {
+    fs$12.stat(path2, function(er, stat) {
       cb(er, er ? false : checkStat(stat, options));
     });
   }
   function sync2(path2, options) {
-    return checkStat(fs$1.statSync(path2), options);
+    return checkStat(fs$12.statSync(path2), options);
   }
   function checkStat(stat, options) {
     return stat.isFile() && checkMode(stat, options);
@@ -2361,7 +2362,7 @@ var hasRequiredCapabilities;
 function requireCapabilities() {
   if (hasRequiredCapabilities) return capabilities;
   hasRequiredCapabilities = 1;
-  var fs$1 = fs;
+  var fs$12 = fs;
   var path2 = path$2;
   var async2 = requireAsync();
   var utils2 = utilsExports;
@@ -2400,7 +2401,7 @@ function requireCapabilities() {
         // Try FFMPEG_PATH
         function(cb) {
           if (process.env.FFMPEG_PATH) {
-            fs$1.exists(process.env.FFMPEG_PATH, function(exists) {
+            fs$12.exists(process.env.FFMPEG_PATH, function(exists) {
               if (exists) {
                 cb(null, process.env.FFMPEG_PATH);
               } else {
@@ -2437,7 +2438,7 @@ function requireCapabilities() {
         // Try FFPROBE_PATH
         function(cb) {
           if (process.env.FFPROBE_PATH) {
-            fs$1.exists(process.env.FFPROBE_PATH, function(exists) {
+            fs$12.exists(process.env.FFPROBE_PATH, function(exists) {
               cb(null, exists ? process.env.FFPROBE_PATH : "");
             });
           } else {
@@ -2464,7 +2465,7 @@ function requireCapabilities() {
             } else if (ffmpeg2.length) {
               var name = utils2.isWindows ? "ffprobe.exe" : "ffprobe";
               var ffprobe22 = path2.join(path2.dirname(ffmpeg2), name);
-              fs$1.exists(ffprobe22, function(exists) {
+              fs$12.exists(ffprobe22, function(exists) {
                 cb(null, exists ? ffprobe22 : "");
               });
             } else {
@@ -2488,7 +2489,7 @@ function requireCapabilities() {
         // Try FLVMETA_PATH
         function(cb) {
           if (process.env.FLVMETA_PATH) {
-            fs$1.exists(process.env.FLVMETA_PATH, function(exists) {
+            fs$12.exists(process.env.FLVMETA_PATH, function(exists) {
               cb(null, exists ? process.env.FLVMETA_PATH : "");
             });
           } else {
@@ -2501,7 +2502,7 @@ function requireCapabilities() {
             return cb(null, flvtool);
           }
           if (process.env.FLVTOOL2_PATH) {
-            fs$1.exists(process.env.FLVTOOL2_PATH, function(exists) {
+            fs$12.exists(process.env.FLVTOOL2_PATH, function(exists) {
               cb(null, exists ? process.env.FLVTOOL2_PATH : "");
             });
           } else {
@@ -2960,7 +2961,7 @@ var hasRequiredRecipes;
 function requireRecipes() {
   if (hasRequiredRecipes) return recipes;
   hasRequiredRecipes = 1;
-  var fs$1 = fs;
+  var fs$12 = fs;
   var path2 = path$2;
   var PassThrough = require$$2.PassThrough;
   var async2 = requireAsync();
@@ -3160,9 +3161,9 @@ function requireRecipes() {
         },
         // Create output directory
         function createDirectory(filenames, next) {
-          fs$1.exists(config.folder, function(exists) {
+          fs$12.exists(config.folder, function(exists) {
             if (!exists) {
-              fs$1.mkdir(config.folder, function(err) {
+              fs$12.mkdir(config.folder, function(err) {
                 if (err) {
                   next(err);
                 } else {
@@ -4199,7 +4200,7 @@ let isQuitting = false;
 function createWindow() {
   Menu.setApplicationMenu(null);
   win = new BrowserWindow({
-    icon: path$3.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: path$3.join(process.env.VITE_PUBLIC, "lumin.ico"),
     width: 450,
     height: 670,
     resizable: false,
@@ -4496,6 +4497,23 @@ app.whenReady().then(() => {
     }).catch((e) => {
       console.error("Error processing replay:", e);
     });
+  });
+  ipcMain.handle("cancel-save", async () => {
+    console.log("Cancel save requested");
+    if (overlayWindow) {
+      overlayWindow.close();
+    }
+    if (lastReplayPath) {
+      try {
+        if (fs$1.existsSync(lastReplayPath)) {
+          await fs$1.promises.unlink(lastReplayPath);
+          console.log("Deleted temporary replay file:", lastReplayPath);
+        }
+      } catch (e) {
+        console.error("Error deleting temporary replay file:", e);
+      }
+      lastReplayPath = null;
+    }
   });
   console.log("LuminReplay is running in the system tray");
 });

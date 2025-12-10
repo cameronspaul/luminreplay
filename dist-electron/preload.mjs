@@ -35,5 +35,7 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   // Save Replay
   saveReplay: () => electron.ipcRenderer.invoke("save-replay"),
   // Update hotkeys
-  updateHotkey: () => electron.ipcRenderer.invoke("update-hotkey")
+  updateHotkey: () => electron.ipcRenderer.invoke("update-hotkey"),
+  // Cancel save
+  cancelSave: () => electron.ipcRenderer.invoke("cancel-save")
 });

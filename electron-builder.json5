@@ -26,6 +26,7 @@
         ]
       }
     ],
+    "icon": "public/lumin.ico",
     "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
   },
   "nsis": {

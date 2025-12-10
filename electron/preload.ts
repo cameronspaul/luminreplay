@@ -43,4 +43,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Update hotkeys
   updateHotkey: () => ipcRenderer.invoke('update-hotkey'),
+
+  // Cancel save
+  cancelSave: () => ipcRenderer.invoke('cancel-save'),
 })

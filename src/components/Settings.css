@@ -302,6 +302,7 @@
 }
 
 .settings-switch input:checked+.settings-switch-slider:before {
+    transform: translateX(22px);
     background: #fff;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }

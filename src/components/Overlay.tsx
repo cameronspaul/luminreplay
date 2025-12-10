@@ -43,7 +43,13 @@ const Overlay: React.FC = () => {
                 </div>
             </div>
 
-            <button className="overlay-cancel-btn" onClick={() => window.close()}>
+            <button
+                className="overlay-cancel-btn"
+                onClick={() => {
+                    // @ts-ignore
+                    window.electronAPI?.cancelSave();
+                }}
+            >
                 Cancel
             </button>
         </div>
