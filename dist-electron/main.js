@@ -4200,13 +4200,13 @@ app.whenReady().then(() => {
   ipcMain.handle("select-monitor", async (_event, index) => {
     if (!lastReplayPath) return;
     console.log("Selected monitor:", index);
-    try {
-      const result = await OBSManager.getInstance().processReplay(lastReplayPath, index);
-      console.log("Replay processed to:", result);
-    } catch (e) {
-      console.error(e);
-    }
     if (overlayWindow) overlayWindow.close();
+    const replayPath = lastReplayPath;
+    OBSManager.getInstance().processReplay(replayPath, index).then((result) => {
+      console.log("Replay processed to:", result);
+    }).catch((e) => {
+      console.error("Error processing replay:", e);
+    });
   });
   console.log("LuminReplay is running in the system tray");
 });

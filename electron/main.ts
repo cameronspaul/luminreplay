@@ -281,14 +281,18 @@ app.whenReady().then(() => {
     if (!lastReplayPath) return
     console.log('Selected monitor:', index)
 
-    try {
-      const result = await OBSManager.getInstance().processReplay(lastReplayPath, index)
-      console.log('Replay processed to:', result)
-    } catch (e) {
-      console.error(e)
-    }
-
+    // Close the overlay immediately for better UX
     if (overlayWindow) overlayWindow.close()
+
+    // Process the replay in the background
+    const replayPath = lastReplayPath
+    OBSManager.getInstance().processReplay(replayPath, index)
+      .then((result) => {
+        console.log('Replay processed to:', result)
+      })
+      .catch((e) => {
+        console.error('Error processing replay:', e)
+      })
   })
 
   console.log('LuminReplay is running in the system tray')
