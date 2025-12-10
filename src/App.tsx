@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Overlay from './components/Overlay'
 import Settings from './components/Settings'
+import ClipNotification from './components/ClipNotification'
 import './App.css'
 
 function App() {
@@ -9,6 +10,11 @@ function App() {
   // Simple router based on query param
   const urlParams = new URLSearchParams(window.location.search);
   const showOverlay = urlParams.get('overlay') === 'true';
+  const notificationType = urlParams.get('notification') as 'recorded' | 'saved' | null;
+
+  if (notificationType) {
+    return <ClipNotification type={notificationType} />;
+  }
 
   if (showOverlay) {
     return <Overlay />;

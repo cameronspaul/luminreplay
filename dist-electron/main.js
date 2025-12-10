@@ -3362,7 +3362,9 @@ const ffmpeg = /* @__PURE__ */ getDefaultExportFromCjs(fluentFfmpeg);
 const defaultSettings = {
   replayBufferDuration: 30,
   replayBufferMaxSize: 512,
-  videoBitrate: 12e3,
+  videoBitrate: 24e3,
+  videoEncoder: "jim_nvenc_h264",
+  // Default to NVENC
   fps: 60,
   recordingFormat: "mp4",
   recordingPath: "",
@@ -3693,7 +3695,7 @@ const _OBSManager = class _OBSManager {
     console.log("Configuring output settings...");
     console.log(`  - Replay Buffer Duration: ${settings.replayBufferDuration}s`);
     console.log(`  - Replay Buffer Max Size: ${settings.replayBufferMaxSize}MB`);
-    console.log(`  - Video Bitrate: ${settings.videoBitrate}kbps`);
+    console.log(`  - Video Bitrate: ${settings.videoBitrate} kbps (${(settings.videoBitrate / 1e3).toFixed(1)} Mbps)`);
     console.log(`  - Recording Format: ${settings.recordingFormat}`);
     console.log(`  - Recording Path: ${settings.recordingPath}`);
     try {
@@ -3720,7 +3722,11 @@ const _OBSManager = class _OBSManager {
       }
       updateSetting(outputSettings, "FilePath", recordingPath);
       updateSetting(outputSettings, "RecFormat", settings.recordingFormat);
+      console.log(`  - Setting bitrate: ${settings.videoBitrate} kbps`);
       updateSetting(outputSettings, "VBitrate", settings.videoBitrate);
+      console.log(`  - Video Encoder: ${settings.videoEncoder}`);
+      updateSetting(outputSettings, "StreamEncoder", settings.videoEncoder);
+      updateSetting(outputSettings, "RecEncoder", settings.videoEncoder);
       updateSetting(outputSettings, "RecQuality", "Stream");
       updateSetting(outputSettings, "RecRB", true);
       updateSetting(outputSettings, "RecRBTime", settings.replayBufferDuration);
@@ -3996,6 +4002,7 @@ const RENDERER_DIST = path$3.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$3.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win = null;
 let overlayWindow = null;
+let notificationWindow = null;
 let tray = null;
 let lastReplayPath = null;
 let isQuitting = false;
@@ -4124,6 +4131,46 @@ function showOverlay() {
     overlayWindow = null;
   });
 }
+function showNotification(type) {
+  if (notificationWindow) {
+    notificationWindow.close();
+    notificationWindow = null;
+  }
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth } = primaryDisplay.workAreaSize;
+  const notificationWidth = 280;
+  const notificationHeight = 100;
+  const margin = 16;
+  notificationWindow = new BrowserWindow({
+    width: notificationWidth,
+    height: notificationHeight,
+    x: screenWidth - notificationWidth - margin,
+    y: margin,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    focusable: false,
+    webPreferences: {
+      preload: path$3.join(__dirname$1, "preload.mjs")
+    }
+  });
+  notificationWindow.setAlwaysOnTop(true, "screen-saver");
+  if (VITE_DEV_SERVER_URL) {
+    notificationWindow.loadURL(`${VITE_DEV_SERVER_URL}?notification=${type}`);
+  } else {
+    notificationWindow.loadURL(`file://${path$3.join(RENDERER_DIST, "index.html")}?notification=${type}`);
+  }
+  notificationWindow.on("closed", () => {
+    notificationWindow = null;
+  });
+  setTimeout(() => {
+    if (notificationWindow) {
+      notificationWindow.close();
+    }
+  }, 3500);
+}
 async function performReplaySave() {
   try {
     lastReplayPath = await OBSManager.getInstance().saveReplayBuffer();
@@ -4135,6 +4182,7 @@ async function performReplaySave() {
     });
     if (activeMonitors.length === 1) {
       console.log("Single monitor detected/enabled. Replay saved directly (no processing needed).");
+      showNotification("recorded");
       return true;
     } else {
       showOverlay();
@@ -4204,6 +4252,7 @@ app.whenReady().then(() => {
     const replayPath = lastReplayPath;
     OBSManager.getInstance().processReplay(replayPath, index).then((result) => {
       console.log("Replay processed to:", result);
+      showNotification("saved");
     }).catch((e) => {
       console.error("Error processing replay:", e);
     });

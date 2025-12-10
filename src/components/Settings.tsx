@@ -5,6 +5,7 @@ interface AppSettings {
     replayBufferDuration: number;
     replayBufferMaxSize: number;
     videoBitrate: number;
+    videoEncoder: string;
     fps: number;
     recordingFormat: 'mp4' | 'mkv' | 'flv';
     recordingPath: string;
@@ -41,8 +42,8 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             if (settings.replayBufferDuration > 180 || settings.replayBufferDuration % 10 !== 0) {
                 setIsCustomDuration(true);
             }
-            // If bitrate is > 60000 (60 Mbps) or not a multiple of 1000, default to custom mode
-            if (settings.videoBitrate > 60000 || settings.videoBitrate % 1000 !== 0) {
+            // If bitrate is > 80000 (10000 KBps) or not a multiple of 400 (50 KBps), default to custom mode
+            if (settings.videoBitrate > 80000 || settings.videoBitrate % 400 !== 0) {
                 setIsCustomBitrate(true);
             }
         }
@@ -353,20 +354,43 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     </div>
 
                     <div className="settings-row">
+                        <label>Video Encoder</label>
+                        <div className="settings-input-group">
+                            <div className="settings-toggle-group">
+                                <button
+                                    className={`settings-toggle-btn ${settings.videoEncoder !== 'x264' ? 'active' : ''}`}
+                                    onClick={() => handleChange('videoEncoder', 'jim_nvenc_h264')}
+                                >
+                                    NVIDIA NVENC
+                                </button>
+                                <button
+                                    className={`settings-toggle-btn ${settings.videoEncoder === 'x264' ? 'active' : ''}`}
+                                    onClick={() => handleChange('videoEncoder', 'x264')}
+                                >
+                                    Software (x264)
+                                </button>
+                            </div>
+                            <span className="settings-hint">
+                                NVENC moves recording load to the GPU, improving game performance.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="settings-row">
                         <label>Video Bitrate</label>
                         <div className="settings-input-group">
                             {!isCustomBitrate ? (
                                 <div className="settings-slider-container">
                                     <input
                                         type="range"
-                                        min="1000"
-                                        max="60000"
-                                        step="1000"
-                                        value={Math.min(settings.videoBitrate, 60000)}
-                                        onChange={(e) => handleChange('videoBitrate', Number(e.target.value))}
+                                        min="500"
+                                        max="8000"
+                                        step="100"
+                                        value={Math.round(settings.videoBitrate / 8)}
+                                        onChange={(e) => handleChange('videoBitrate', Number(e.target.value) * 8)}
                                     />
                                     <span className="settings-slider-value">
-                                        {(settings.videoBitrate / 1000).toFixed(0)} Mbps
+                                        {Math.round(settings.videoBitrate / 8)} KBps
                                     </span>
                                     <button
                                         className="settings-toggle-btn"
@@ -390,14 +414,14 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                     }}>
                                         <input
                                             type="number"
-                                            min="1000"
-                                            value={settings.videoBitrate || ''}
-                                            onChange={(e) => handleChange('videoBitrate', parseInt(e.target.value) || 0)}
+                                            min="100"
+                                            value={Math.round(settings.videoBitrate / 8) || ''}
+                                            onChange={(e) => handleChange('videoBitrate', (parseInt(e.target.value) || 0) * 8)}
                                             onBlur={() => {
-                                                if (settings.videoBitrate < 1000) handleChange('videoBitrate', 1000);
+                                                if (settings.videoBitrate < 800) handleChange('videoBitrate', 800);
                                             }}
                                             className="settings-number-input-custom"
-                                            placeholder="kbps"
+                                            placeholder="KBps"
                                             style={{
                                                 flex: 1,
                                                 background: 'transparent',
@@ -418,13 +442,13 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                         onClick={() => {
                                             setIsCustomBitrate(false);
                                             // Clamp/Snap logic for returning to slider
-                                            if (settings.videoBitrate > 60000) {
-                                                handleChange('videoBitrate', 60000);
-                                            } else if (settings.videoBitrate < 1000) {
-                                                handleChange('videoBitrate', 1000);
+                                            if (settings.videoBitrate > 64000) {
+                                                handleChange('videoBitrate', 64000);
+                                            } else if (settings.videoBitrate < 4000) {
+                                                handleChange('videoBitrate', 4000);
                                             } else {
-                                                // Round to nearest 1000
-                                                handleChange('videoBitrate', Math.round(settings.videoBitrate / 1000) * 1000);
+                                                // Round to nearest 800 (100 KBps)
+                                                handleChange('videoBitrate', Math.round(settings.videoBitrate / 800) * 800);
                                             }
                                         }}
                                         style={{ whiteSpace: 'nowrap' }}

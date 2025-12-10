@@ -355,7 +355,7 @@ export class OBSManager {
         console.log("Configuring output settings...");
         console.log(`  - Replay Buffer Duration: ${settings.replayBufferDuration}s`);
         console.log(`  - Replay Buffer Max Size: ${settings.replayBufferMaxSize}MB`);
-        console.log(`  - Video Bitrate: ${settings.videoBitrate}kbps`);
+        console.log(`  - Video Bitrate: ${settings.videoBitrate} kbps (${(settings.videoBitrate / 1000).toFixed(1)} Mbps)`);
         console.log(`  - Recording Format: ${settings.recordingFormat}`);
         console.log(`  - Recording Path: ${settings.recordingPath}`);
 
@@ -392,10 +392,19 @@ export class OBSManager {
             // Set recording format from settings
             updateSetting(outputSettings, 'RecFormat', settings.recordingFormat);
 
-            // Set video bitrate from settings
+            // Set streaming bitrate - this is used by recording when RecQuality is "Stream"
+            console.log(`  - Setting bitrate: ${settings.videoBitrate} kbps`);
             updateSetting(outputSettings, 'VBitrate', settings.videoBitrate);
 
-            // Set encoder quality (higher bitrate = higher quality)
+            // Set video encoder
+            // 'jim_nvenc_h264' is for NVIDIA NVENC
+            // 'x264' is for Software (CPU)
+            console.log(`  - Video Encoder: ${settings.videoEncoder}`);
+            updateSetting(outputSettings, 'StreamEncoder', settings.videoEncoder);
+            updateSetting(outputSettings, 'RecEncoder', settings.videoEncoder);
+
+            // IMPORTANT: Set recording quality to "Stream" which uses VBitrate for recording
+            // This is the key to controlling recording bitrate in Simple mode
             updateSetting(outputSettings, 'RecQuality', 'Stream');
 
             // Enable replay buffer

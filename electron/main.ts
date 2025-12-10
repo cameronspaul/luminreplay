@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, shell, screen } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { OBSManager } from './obs'
@@ -16,6 +16,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 let win: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
+let notificationWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let lastReplayPath: string | null = null
 let isQuitting = false
@@ -166,6 +167,58 @@ function showOverlay() {
   })
 }
 
+function showNotification(type: 'recorded' | 'saved') {
+  // Close existing notification if any
+  if (notificationWindow) {
+    notificationWindow.close()
+    notificationWindow = null
+  }
+
+  // Get the primary display to position the notification
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth } = primaryDisplay.workAreaSize
+
+  const notificationWidth = 280
+  const notificationHeight = 100
+  const margin = 16
+
+  notificationWindow = new BrowserWindow({
+    width: notificationWidth,
+    height: notificationHeight,
+    x: screenWidth - notificationWidth - margin,
+    y: margin,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    focusable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.mjs'),
+    }
+  })
+
+  // Prevent the notification from being focused
+  notificationWindow.setAlwaysOnTop(true, 'screen-saver')
+
+  if (VITE_DEV_SERVER_URL) {
+    notificationWindow.loadURL(`${VITE_DEV_SERVER_URL}?notification=${type}`)
+  } else {
+    notificationWindow.loadURL(`file://${path.join(RENDERER_DIST, 'index.html')}?notification=${type}`)
+  }
+
+  notificationWindow.on('closed', () => {
+    notificationWindow = null
+  })
+
+  // Auto-close after 3.5 seconds (matches CSS animation)
+  setTimeout(() => {
+    if (notificationWindow) {
+      notificationWindow.close()
+    }
+  }, 3500)
+}
+
 async function performReplaySave() {
   try {
     lastReplayPath = await OBSManager.getInstance().saveReplayBuffer() as string
@@ -181,6 +234,8 @@ async function performReplaySave() {
     if (activeMonitors.length === 1) {
       // Single monitor - no processing needed, original file is already correct
       console.log("Single monitor detected/enabled. Replay saved directly (no processing needed).")
+      // Show the "Clip Recorded" notification for single monitor
+      showNotification('recorded')
       return true
     } else {
       showOverlay()
@@ -289,6 +344,8 @@ app.whenReady().then(() => {
     OBSManager.getInstance().processReplay(replayPath, index)
       .then((result) => {
         console.log('Replay processed to:', result)
+        // Show "Clip Saved" notification after processing completes
+        showNotification('saved')
       })
       .catch((e) => {
         console.error('Error processing replay:', e)

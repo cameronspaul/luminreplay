@@ -1,0 +1,150 @@
+.clip-notification-container {
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    padding: 16px;
+    box-sizing: border-box;
+    font-family: 'Outfit', 'Inter', 'Segoe UI', system-ui, sans-serif;
+    pointer-events: none;
+}
+
+.clip-notification {
+    background: rgba(13, 14, 17, 0.95);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    backdrop-filter: blur(20px);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(74, 222, 128, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+        fadeOut 0.4s ease-out 2.6s forwards;
+    pointer-events: auto;
+    min-width: 200px;
+}
+
+.clip-notification-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.2) 0%, rgba(34, 197, 94, 0.2) 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.clip-notification-icon::before {
+    content: '';
+    width: 18px;
+    height: 18px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234ade80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/%3E%3Cpolyline points='22 4 12 14.01 9 11.01'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.clip-notification-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.clip-notification-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+
+.clip-notification-subtitle {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+}
+
+/* Processing state */
+.clip-notification.processing .clip-notification-icon::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234ade80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 1 1-6.219-8.56'/%3E%3C/svg%3E");
+    animation: spin 1s linear infinite;
+}
+
+.clip-notification.processing {
+    border-color: rgba(250, 204, 21, 0.3);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(250, 204, 21, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.clip-notification.processing .clip-notification-icon {
+    background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(234, 179, 8, 0.2) 100%);
+}
+
+.clip-notification.processing .clip-notification-icon::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23facc15' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 1 1-6.219-8.56'/%3E%3C/svg%3E");
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100px) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(20px) scale(0.95);
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Pulse effect for the success state checkmark */
+.clip-notification:not(.processing) .clip-notification-icon::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    background: rgba(74, 222, 128, 0.3);
+    animation: pulse 0.6s ease-out;
+}
+
+@keyframes pulse {
+    from {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    to {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
