@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import luminLogo from './assets/lumin.svg'
 import Overlay from './components/Overlay'
 import Settings from './components/Settings'
 import ClipNotification from './components/ClipNotification'
@@ -53,7 +54,7 @@ function App() {
     <div className="main-container">
       <div className="main-content">
         <div className="logo-section">
-          <img src="/lumin.svg" alt="LuminReplay Logo" className="logo-icon" />
+          <img src={luminLogo} alt="LuminReplay Logo" className="logo-icon" />
           <h1 className="app-title">Lumin<span>Replay</span></h1>
           <p className="app-subtitle">Multi-Monitor Replay Buffer</p>
         </div>

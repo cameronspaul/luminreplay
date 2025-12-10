@@ -1,99 +1,53 @@
 # LuminReplay
 
-A desktop application that provides LuminReplay-like functionality for screen recording with multi-monitor replay buffer support. Built with Electron, React, and OBS Studio.
+LuminReplay is an Electron + React desktop app that runs a ShadowPlay-style replay buffer across multiple monitors using `obs-studio-node`. It captures a mega-canvas of all connected displays, lets you pick which view to save, and splits/crops recordings per monitor with `ffmpeg`. A tray UI, global hotkeys, and in-app settings keep the workflow fast while keeping GPU/CPU load low (NVENC by default).
 
 ## Features
-
-- **Multi-Monitor Support**: Capture and save replays from any connected monitor
-- **System Tray Integration**: Runs quietly in the background with easy access
-- **Hotkey Support**: Press `Alt + F10` to instantly save the last few seconds of gameplay
-- **Overlay Interface**: Choose which monitor to save after triggering a replay
-- **Customizable Settings**: Configure recording path, video quality, and more
-- **OBS Studio Integration**: Leverages OBS Studio's powerful recording capabilities
+- Multi-monitor capture with per-monitor saves or “save all” splitting.
+- Global hotkeys for main overlay, per-monitor quick saves, and buffer toggle (defaults: Alt+F10 main, Alt+F11/Alt+F12 per-monitor, Alt+Delete all, Alt+F9 toggle).
+- Replay buffer controls, notifications, and tray menu with quick actions.
+- Settings for buffer length/size, bitrate, encoder (NVENC or x264), FPS, capture/output resolution (native/presets/custom), audio sources, formats, save path, and enabled monitors.
+- Automatic recording folder under your Videos directory on first run.
 
 ## Requirements
+- Node.js 18+ and npm.
+- Platform prerequisites for `obs-studio-node` (e.g., VC++ Redistributable on Windows; GPU drivers for NVENC). The app will prompt to install VC++ if OBS cannot load.
+- `ffmpeg` available on PATH for post-processing crops when saving per monitor (used by `fluent-ffmpeg`).
 
-- Windows (primary platform)
-- OBS Studio installed on your system
-- Node.js 18+ for development
-
-## Installation
-
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd luminreplay
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Build the application:
-   ```bash
-   npm run build
-   ```
-
-## Usage
-
-1. Launch the application - it will appear in your system tray
-
-2. The replay buffer will automatically start recording
-3. Press `Alt + F10` to save the last few seconds of your screen
-4. An overlay will appear allowing you to select which monitor to save
-5. Recordings are saved to your configured output directory
-
-### System Tray Options
-
-- **Save Replay (Alt+F10)**: Manually trigger replay save
-- **Settings**: Open the settings window
-- **Open Recordings Folder**: Browse your saved recordings
-- **Quit**: Exit the application
-
-## Development
-
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run lint` - Run ESLint
-- `npm run preview` - Preview production build
-
-### Project Structure
-
+## Getting Started
+```bash
+npm install
+npm run dev        # Starts Vite + Electron in development
 ```
-src/
-├── components/     # React components
-│   ├── Overlay.tsx # Monitor selection overlay
-│   └── Settings.tsx # Settings interface
-├── App.tsx         # Main application component
-└── main.tsx        # React entry point
+The Vite dev server serves the renderer; `vite-plugin-electron` builds/launches the main and preload processes alongside it.
 
-electron/
-├── main.ts         # Electron main process
-├── obs.ts          # OBS Studio integration
-├── settings.ts     # Settings management
-└── preload.ts      # Preload script
+### Lint
+```bash
+npm run lint
 ```
 
-## Configuration
+### Production Build / Installer
+```bash
+npm run build      # tsc + vite build + electron-builder
+```
+Packages are written to `release/<version>` based on `electron-builder.json5` (nsis for Windows, dmg for macOS, AppImage for Linux).
 
-The application stores settings in a local configuration file. You can modify:
+## Using the App
+- Tray: click the tray icon to open settings; context menu shows buffer state, toggle, save replay, open recordings folder, and quit.
+- Main window: toggle replay buffer, save replay, and open Settings.
+- Overlay: pressing the main hotkey shows a monitor picker; choose a display or “Save All” to split outputs per monitor.
+- Direct saves: per-monitor/all hotkeys bypass the overlay and crop in the background.
+- Settings: adjust video quality, resolutions, audio, hotkeys, monitors to record, and save location. Use “Reset Defaults” to revert while keeping the current recording path. Saving restarts OBS and rebinds hotkeys.
 
-- Recording output path
-- Video bitrate and quality
-- Replay buffer length
-- Hotkey configuration
+## Project Structure
+- `src/` — React renderer (App UI, settings, overlay, notifications).
+- `electron/main.ts` — Electron bootstrap, tray, windows, hotkeys, IPC.
+- `electron/obs.ts` — OBS integration, replay buffer control, monitor-aware splitting with ffmpeg.
+- `electron/settings.ts` — Settings persistence (JSON in user data) and IPC.
+- `electron/preload.ts` — Safe IPC bridge (`window.electronAPI`).
+- `public/` — Static assets (icons, logos).
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
-
-## License
-
-This project is open source. See LICENSE file for details.
+## Troubleshooting
+- OBS engine failed to load: install the VC++ Redistributable (Windows) or platform-specific dependencies for `obs-studio-node`, then restart.
+- ffmpeg not found: install ffmpeg and ensure it is on PATH so `fluent-ffmpeg` can crop/split recordings.
+- Hotkeys not registering: ensure the key combos are free; saving settings re-registers all shortcuts.
