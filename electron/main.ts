@@ -411,6 +411,9 @@ app.whenReady().then(() => {
   // Initialize OBS
   OBSManager.getInstance().initialize()
 
+  // Show notification that buffer has started
+  showNotification('buffer-on')
+
   // Function to register all hotkeys
   const registerGlobalHotkeys = () => {
     // Unregister all first to be safe

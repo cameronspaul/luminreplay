@@ -89,6 +89,7 @@ img.logo-icon {
   line-height: 1.5;
 }
 
+/* Status Card */
 .status-card {
   display: flex;
   align-items: center;
@@ -102,12 +103,62 @@ img.logo-icon {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  user-select: none;
 }
 
 .status-card:hover {
-  border-color: rgba(241, 210, 137, 0.3);
+  border-color: rgba(241, 210, 137, 0.4);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  background: #1a1a1a;
+  background: #1e1e1e;
+}
+
+.status-card:active {
+  transform: translateY(0);
+}
+
+.status-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.status-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.status-card:hover .status-action {
+  opacity: 1;
+  color: var(--gold-light);
+}
+
+/* Paused State Special Styling */
+.status-card.paused {
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.status-card.paused:hover {
+  border-color: #ef4444;
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.status-card.paused .status-action {
+  color: #ef4444;
+}
+
+.status-card.paused:hover .status-action {
+  color: #ef4444;
+  opacity: 1;
 }
 
 .status-indicator {
@@ -116,12 +167,19 @@ img.logo-icon {
   border-radius: 50%;
   background: var(--green);
   box-shadow: 0 0 0 2px var(--green);
+  flex-shrink: 0;
 }
 
 .status-indicator.active {
   background: var(--green);
   box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2), 0 0 15px var(--green);
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.status-indicator.inactive {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  animation: none;
 }
 
 @keyframes pulse {
@@ -156,6 +214,13 @@ img.logo-icon {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-main);
+}
+
+/* Hide action text on very small screens if needed */
+@media (max-width: 380px) {
+  .status-action-text {
+    display: none;
+  }
 }
 
 .hotkey-card {
@@ -268,61 +333,6 @@ img.logo-icon {
 
 .secondary-button:active {
   background: rgba(241, 210, 137, 0.05);
-}
-
-/* Toggle Button Styles */
-.toggle-button {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-main);
-  padding: 1rem 2.5rem;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  backdrop-filter: blur(5px);
-}
-
-.toggle-button.active {
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
-}
-
-.toggle-button.active:hover {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: #ef4444;
-}
-
-.toggle-button.inactive {
-  border-color: rgba(34, 197, 94, 0.3);
-  color: #22c55e;
-}
-
-.toggle-button.inactive:hover {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: #22c55e;
-}
-
-/* Status Indicator States */
-.status-indicator.inactive {
-  background: rgba(239, 68, 68, 0.5);
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
-  animation: none;
-}
-
-/* Status Card Paused State */
-.status-card.paused {
-  border-color: rgba(239, 68, 68, 0.15);
-}
-
-.status-card.paused:hover {
-  border-color: rgba(239, 68, 68, 0.3);
 }
 
 /* Disabled Button State */

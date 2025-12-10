@@ -30,7 +30,7 @@ const ClipNotification: React.FC<ClipNotificationProps> = ({ type }) => {
     let notificationClass = '';
 
     if (isBufferOn) {
-        title = 'Buffer Enabled';
+        title = 'Buffer Started';
         subtitle = 'Recording active';
         notificationClass = 'buffer-on';
     } else if (isBufferOff) {

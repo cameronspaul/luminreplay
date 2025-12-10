@@ -58,13 +58,18 @@ function App() {
           <p className="app-subtitle">Multi-Monitor Replay Buffer</p>
         </div>
 
-        <div className={`status-card ${bufferActive ? '' : 'paused'}`} onClick={handleToggleBuffer} style={{ cursor: 'pointer' }}>
-          <div className={`status-indicator ${bufferActive ? 'active' : 'inactive'}`}></div>
-          <div className="status-text">
-            <span className="status-label">Replay Buffer</span>
-            <span className="status-value">{bufferActive ? 'Active - Monitoring' : 'Paused'}</span>
+        <div className={`status-card ${bufferActive ? '' : 'paused'}`} onClick={handleToggleBuffer} role="button" tabIndex={0} title="Click to toggle replay buffer">
+          <div className="status-main">
+            <div className={`status-indicator ${bufferActive ? 'active' : 'inactive'}`}></div>
+            <div className="status-text">
+              <span className="status-label">Replay Buffer</span>
+              <span className="status-value">{bufferActive ? 'Active' : 'Paused'}</span>
+            </div>
           </div>
-          <i className={`ph ${bufferActive ? 'ph-broadcast' : 'ph-pause-circle'}`} style={{ fontSize: '1.5rem', color: bufferActive ? 'var(--gold-light)' : 'var(--text-muted)', opacity: 0.8 }}></i>
+          <div className="status-action">
+            <span className="status-action-text">{bufferActive ? 'Click to Pause' : 'Click to Resume'}</span>
+            <i className={`ph ${bufferActive ? 'ph-pause-circle' : 'ph-play-circle'}`} style={{ fontSize: '1.5rem', opacity: 0.9 }}></i>
+          </div>
         </div>
         <div className="button-group">
           <button
@@ -77,13 +82,6 @@ function App() {
           >
             <i className="ph ph-floppy-disk" style={{ marginRight: '8px' }}></i>
             Save Replay
-          </button>
-          <button
-            className={`toggle-button ${bufferActive ? 'active' : 'inactive'}`}
-            onClick={handleToggleBuffer}
-          >
-            <i className={`ph ${bufferActive ? 'ph-pause' : 'ph-play'}`} style={{ marginRight: '8px' }}></i>
-            {bufferActive ? 'Pause Buffer' : 'Resume Buffer'}
           </button>
           <button
             className="secondary-button"
