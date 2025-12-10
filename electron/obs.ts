@@ -577,12 +577,60 @@ export class OBSManager {
                 displays.push(...allDisplays);
             }
 
-            // Calculate the offset to normalize coordinates (make min x,y = 0)
-            let minX = 0, minY = 0;
+            // Calculate native bounding box
+            let minX = 0, minY = 0, maxX = 0, maxY = 0;
             displays.forEach((d, i) => {
                 if (i === 0 || d.bounds.x < minX) minX = d.bounds.x;
                 if (i === 0 || d.bounds.y < minY) minY = d.bounds.y;
+                if (i === 0 || d.bounds.x + d.bounds.width > maxX) maxX = d.bounds.x + d.bounds.width;
+                if (i === 0 || d.bounds.y + d.bounds.height > maxY) maxY = d.bounds.y + d.bounds.height;
             });
+
+            const nativeWidth = maxX - minX;
+            const nativeHeight = maxY - minY;
+
+            // Helper function to get resolution from preset (same as in setupVideo)
+            const getResolutionFromPreset = (
+                preset: string,
+                customRes: { width: number; height: number } | undefined,
+                nativeW: number,
+                nativeH: number
+            ): { width: number; height: number } => {
+                switch (preset) {
+                    case '1080p': {
+                        const scale = 1080 / nativeH;
+                        return { width: Math.round(nativeW * scale), height: 1080 };
+                    }
+                    case '720p': {
+                        const scale = 720 / nativeH;
+                        return { width: Math.round(nativeW * scale), height: 720 };
+                    }
+                    case '480p': {
+                        const scale = 480 / nativeH;
+                        return { width: Math.round(nativeW * scale), height: 480 };
+                    }
+                    case 'custom':
+                        return customRes || { width: 1920, height: 1080 };
+                    case 'native':
+                    default:
+                        return { width: nativeW, height: nativeH };
+                }
+            };
+
+            // Calculate capture resolution and scale factor
+            const captureRes = getResolutionFromPreset(
+                settings.captureResolution,
+                settings.customCaptureResolution,
+                nativeWidth,
+                nativeHeight
+            );
+
+            // Calculate scale factor from native to capture resolution
+            const scaleX = captureRes.width / nativeWidth;
+            const scaleY = captureRes.height / nativeHeight;
+
+            console.log(`Scene scaling: Native ${nativeWidth}x${nativeHeight} -> Capture ${captureRes.width}x${captureRes.height}`);
+            console.log(`  Scale factors: ${scaleX.toFixed(3)}x${scaleY.toFixed(3)}`);
 
             // Add each enabled display to the scene
             allDisplays.forEach((display, index) => {
@@ -625,12 +673,20 @@ export class OBSManager {
                         const sceneItem = scene.add(input);
 
                         if (sceneItem) {
-                            // Position the source based on monitor location
-                            const posX = display.bounds.x - minX;
-                            const posY = display.bounds.y - minY;
+                            // Calculate scaled position relative to the capture canvas
+                            const posX = (display.bounds.x - minX) * scaleX;
+                            const posY = (display.bounds.y - minY) * scaleY;
 
+                            // Apply position
                             sceneItem.position = { x: posX, y: posY };
-                            console.log(`Positioned ${sourceName} at (${posX}, ${posY})`);
+
+                            // Apply scale to the source if we're downscaling
+                            if (scaleX !== 1 || scaleY !== 1) {
+                                sceneItem.scale = { x: scaleX, y: scaleY };
+                                console.log(`Positioned ${sourceName} at (${posX.toFixed(0)}, ${posY.toFixed(0)}) with scale ${scaleX.toFixed(3)}x${scaleY.toFixed(3)}`);
+                            } else {
+                                console.log(`Positioned ${sourceName} at (${posX}, ${posY})`);
+                            }
                         } else {
                             console.error(`Failed to add ${sourceName} to scene`);
                         }

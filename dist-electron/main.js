@@ -3858,11 +3858,46 @@ const _OBSManager = class _OBSManager {
         console.warn("No monitors enabled, using all displays for scene");
         displays.push(...allDisplays);
       }
-      let minX = 0, minY = 0;
+      let minX = 0, minY = 0, maxX = 0, maxY = 0;
       displays.forEach((d, i) => {
         if (i === 0 || d.bounds.x < minX) minX = d.bounds.x;
         if (i === 0 || d.bounds.y < minY) minY = d.bounds.y;
+        if (i === 0 || d.bounds.x + d.bounds.width > maxX) maxX = d.bounds.x + d.bounds.width;
+        if (i === 0 || d.bounds.y + d.bounds.height > maxY) maxY = d.bounds.y + d.bounds.height;
       });
+      const nativeWidth = maxX - minX;
+      const nativeHeight = maxY - minY;
+      const getResolutionFromPreset = (preset, customRes, nativeW, nativeH) => {
+        switch (preset) {
+          case "1080p": {
+            const scale = 1080 / nativeH;
+            return { width: Math.round(nativeW * scale), height: 1080 };
+          }
+          case "720p": {
+            const scale = 720 / nativeH;
+            return { width: Math.round(nativeW * scale), height: 720 };
+          }
+          case "480p": {
+            const scale = 480 / nativeH;
+            return { width: Math.round(nativeW * scale), height: 480 };
+          }
+          case "custom":
+            return customRes || { width: 1920, height: 1080 };
+          case "native":
+          default:
+            return { width: nativeW, height: nativeH };
+        }
+      };
+      const captureRes = getResolutionFromPreset(
+        settings.captureResolution,
+        settings.customCaptureResolution,
+        nativeWidth,
+        nativeHeight
+      );
+      const scaleX = captureRes.width / nativeWidth;
+      const scaleY = captureRes.height / nativeHeight;
+      console.log(`Scene scaling: Native ${nativeWidth}x${nativeHeight} -> Capture ${captureRes.width}x${captureRes.height}`);
+      console.log(`  Scale factors: ${scaleX.toFixed(3)}x${scaleY.toFixed(3)}`);
       allDisplays.forEach((display, index) => {
         if (enabledMonitors && !enabledMonitors.includes(index)) {
           console.log(`Skipping Monitor-${index} (disabled in settings)`);
@@ -3891,10 +3926,15 @@ const _OBSManager = class _OBSManager {
             console.log(`Got input: ${sourceName}, dimensions: ${input.width}x${input.height}`);
             const sceneItem = scene.add(input);
             if (sceneItem) {
-              const posX = display.bounds.x - minX;
-              const posY = display.bounds.y - minY;
+              const posX = (display.bounds.x - minX) * scaleX;
+              const posY = (display.bounds.y - minY) * scaleY;
               sceneItem.position = { x: posX, y: posY };
-              console.log(`Positioned ${sourceName} at (${posX}, ${posY})`);
+              if (scaleX !== 1 || scaleY !== 1) {
+                sceneItem.scale = { x: scaleX, y: scaleY };
+                console.log(`Positioned ${sourceName} at (${posX.toFixed(0)}, ${posY.toFixed(0)}) with scale ${scaleX.toFixed(3)}x${scaleY.toFixed(3)}`);
+              } else {
+                console.log(`Positioned ${sourceName} at (${posX}, ${posY})`);
+              }
             } else {
               console.error(`Failed to add ${sourceName} to scene`);
             }
