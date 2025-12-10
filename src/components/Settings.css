@@ -115,7 +115,9 @@
 }
 
 /* Select styling */
-.settings-input-group select {
+/* Select and Number Input styling */
+.settings-input-group select,
+.settings-input-group input[type="number"] {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #f3f4f6;
@@ -128,14 +130,13 @@
     width: 100%;
 }
 
-.settings-input-group select:hover {
-    border-color: rgba(255, 255, 255, 0.2);
+.settings-input-group select option {
+    background-color: #1a1c23;
+    color: #f3f4f6;
+    padding: 10px;
 }
 
-.settings-input-group select:focus {
-    border-color: #4ade80;
-    box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.1);
-}
+
 
 /* Slider styling */
 .settings-slider-container {

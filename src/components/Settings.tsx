@@ -18,6 +18,22 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
+    const [isCustomDuration, setIsCustomDuration] = useState(false);
+    const [isCustomBitrate, setIsCustomBitrate] = useState(false);
+
+    // Initialize custom mode based on loaded settings
+    useEffect(() => {
+        if (settings) {
+            // If duration is > 3 minutes (180s) or not a multiple of 10, default to custom mode
+            if (settings.replayBufferDuration > 180 || settings.replayBufferDuration % 10 !== 0) {
+                setIsCustomDuration(true);
+            }
+            // If bitrate is > 60000 (60 Mbps) or not a multiple of 1000, default to custom mode
+            if (settings.videoBitrate > 60000 || settings.videoBitrate % 1000 !== 0) {
+                setIsCustomBitrate(true);
+            }
+        }
+    }, [loading]); // Run check when loading completes
 
     // Preset options
     const fpsOptions = [30, 60, 120];
@@ -27,7 +43,7 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         { label: 'High (20 Mbps)', value: 20000 },
         { label: 'Ultra (50 Mbps)', value: 50000 },
     ];
-    const durationPresets = [15, 30, 60, 120, 300];
+
     const formatOptions = ['mp4', 'mkv', 'flv'] as const;
 
     useEffect(() => {
@@ -129,17 +145,91 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="settings-row">
                         <label>Buffer Duration</label>
                         <div className="settings-input-group">
-                            <select
-                                value={settings.replayBufferDuration}
-                                onChange={(e) => handleChange('replayBufferDuration', Number(e.target.value))}
-                            >
-                                {durationPresets.map(d => (
-                                    <option key={d} value={d}>
-                                        {d >= 60 ? `${d / 60} minute${d > 60 ? 's' : ''}` : `${d} seconds`}
-                                    </option>
-                                ))}
-                            </select>
-                            <span className="settings-hint">How far back the replay buffer saves</span>
+                            {!isCustomDuration ? (
+                                <div className="settings-slider-container">
+                                    <input
+                                        type="range"
+                                        min="10"
+                                        max="180"
+                                        step="10"
+                                        value={Math.min(settings.replayBufferDuration, 180)}
+                                        onChange={(e) => handleChange('replayBufferDuration', Number(e.target.value))}
+                                    />
+                                    <span className="settings-slider-value">
+                                        {settings.replayBufferDuration >= 60
+                                            ? `${Math.floor(settings.replayBufferDuration / 60)}m ${settings.replayBufferDuration % 60 > 0 ? settings.replayBufferDuration % 60 + 's' : ''}`
+                                            : `${settings.replayBufferDuration}s`}
+                                    </span>
+                                    <button
+                                        className="settings-toggle-btn"
+                                        onClick={() => setIsCustomDuration(true)}
+                                        style={{ marginLeft: '10px', whiteSpace: 'nowrap' }}
+                                    >
+                                        Custom
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="settings-custom-duration-container" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                    <div style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: 'rgba(0, 0, 0, 0.2)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '8px',
+                                        padding: '0 1rem',
+                                        transition: 'all 0.2s ease'
+                                    }}>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={settings.replayBufferDuration || ''}
+                                            onChange={(e) => handleChange('replayBufferDuration', parseInt(e.target.value) || 0)}
+                                            onBlur={() => {
+                                                if (settings.replayBufferDuration < 1) handleChange('replayBufferDuration', 1);
+                                            }}
+                                            className="settings-number-input-custom"
+                                            placeholder="Seconds"
+                                            style={{
+                                                flex: 1,
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: '#f3f4f6',
+                                                padding: '0.75rem 0',
+                                                fontSize: '0.95rem',
+                                                outline: 'none',
+                                                width: '100%'
+                                            }}
+                                        />
+                                        <span style={{ color: '#9ca3af', fontSize: '0.9rem', whiteSpace: 'nowrap', marginLeft: '10px', userSelect: 'none' }}>
+                                            {Math.floor(settings.replayBufferDuration / 60)}m {settings.replayBufferDuration % 60}s
+                                        </span>
+                                    </div>
+                                    <button
+                                        className="settings-toggle-btn active"
+                                        onClick={() => {
+                                            setIsCustomDuration(false);
+                                            // Optional: Clamp back to range if needed, or let the slider handle it (it uses min/max)
+                                            if (settings.replayBufferDuration > 180) {
+                                                handleChange('replayBufferDuration', 180);
+                                            } else if (settings.replayBufferDuration < 10) {
+                                                handleChange('replayBufferDuration', 10);
+                                            } else {
+                                                // Round to nearest 10
+                                                handleChange('replayBufferDuration', Math.round(settings.replayBufferDuration / 10) * 10);
+                                            }
+                                        }}
+                                        style={{ whiteSpace: 'nowrap' }}
+                                    >
+                                        Slider
+                                    </button>
+                                </div>
+                            )}
+                            <span className="settings-hint">
+                                {isCustomDuration
+                                    ? "Enter duration in seconds"
+                                    : "Slide to adjust duration (up to 3 minutes)"}
+                            </span>
                         </div>
                     </div>
 
@@ -186,14 +276,84 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="settings-row">
                         <label>Video Bitrate</label>
                         <div className="settings-input-group">
-                            <select
-                                value={settings.videoBitrate}
-                                onChange={(e) => handleChange('videoBitrate', Number(e.target.value))}
-                            >
-                                {bitratePresets.map(b => (
-                                    <option key={b.value} value={b.value}>{b.label}</option>
-                                ))}
-                            </select>
+                            {!isCustomBitrate ? (
+                                <div className="settings-slider-container">
+                                    <input
+                                        type="range"
+                                        min="1000"
+                                        max="60000"
+                                        step="1000"
+                                        value={Math.min(settings.videoBitrate, 60000)}
+                                        onChange={(e) => handleChange('videoBitrate', Number(e.target.value))}
+                                    />
+                                    <span className="settings-slider-value">
+                                        {(settings.videoBitrate / 1000).toFixed(0)} Mbps
+                                    </span>
+                                    <button
+                                        className="settings-toggle-btn"
+                                        onClick={() => setIsCustomBitrate(true)}
+                                        style={{ marginLeft: '10px', whiteSpace: 'nowrap' }}
+                                    >
+                                        Custom
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="settings-custom-duration-container" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                    <div style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: 'rgba(0, 0, 0, 0.2)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '8px',
+                                        padding: '0 1rem',
+                                        transition: 'all 0.2s ease'
+                                    }}>
+                                        <input
+                                            type="number"
+                                            min="1000"
+                                            value={settings.videoBitrate || ''}
+                                            onChange={(e) => handleChange('videoBitrate', parseInt(e.target.value) || 0)}
+                                            onBlur={() => {
+                                                if (settings.videoBitrate < 1000) handleChange('videoBitrate', 1000);
+                                            }}
+                                            className="settings-number-input-custom"
+                                            placeholder="kbps"
+                                            style={{
+                                                flex: 1,
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: '#f3f4f6',
+                                                padding: '0.75rem 0',
+                                                fontSize: '0.95rem',
+                                                outline: 'none',
+                                                width: '100%'
+                                            }}
+                                        />
+                                        <span style={{ color: '#9ca3af', fontSize: '0.9rem', whiteSpace: 'nowrap', marginLeft: '10px', userSelect: 'none' }}>
+                                            {(settings.videoBitrate / 1000).toFixed(1)} Mbps
+                                        </span>
+                                    </div>
+                                    <button
+                                        className="settings-toggle-btn active"
+                                        onClick={() => {
+                                            setIsCustomBitrate(false);
+                                            // Clamp/Snap logic for returning to slider
+                                            if (settings.videoBitrate > 60000) {
+                                                handleChange('videoBitrate', 60000);
+                                            } else if (settings.videoBitrate < 1000) {
+                                                handleChange('videoBitrate', 1000);
+                                            } else {
+                                                // Round to nearest 1000
+                                                handleChange('videoBitrate', Math.round(settings.videoBitrate / 1000) * 1000);
+                                            }
+                                        }}
+                                        style={{ whiteSpace: 'nowrap' }}
+                                    >
+                                        Slider
+                                    </button>
+                                </div>
+                            )}
                             <span className="settings-hint">Higher bitrate = better quality, larger files</span>
                         </div>
                     </div>
