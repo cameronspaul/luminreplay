@@ -1,11 +1,11 @@
 .settings-container {
     width: 100%;
-    height: 100%;
+    height: 100vh;
     /* Use the global background */
     background: var(--bg-dark);
     color: var(--text-main);
     font-family: 'Inter', system-ui, sans-serif;
-    padding: 1rem;
+    padding: 0 1rem 1rem 1rem;
     box-sizing: border-box;
     overflow-y: auto;
     overflow-x: hidden;
@@ -27,13 +27,12 @@
     justify-content: space-between;
     gap: 1.5rem;
     margin-bottom: 2rem;
-    padding-bottom: 1rem;
+    padding: 1rem 0;
     border-bottom: 1px solid rgba(241, 210, 137, 0.1);
     position: sticky;
     top: 0;
     z-index: 100;
     background: var(--bg-dark);
-    margin-top: -1rem;
 }
 
 .settings-header-actions {
