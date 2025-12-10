@@ -45,6 +45,9 @@ export interface AppSettings {
 
     // Monitors
     enabledMonitors?: number[]; // indices of enabled monitors. If undefined, all are enabled.
+
+    // System
+    openAtLogin: boolean;
 }
 
 const defaultSettings: AppSettings = {
@@ -68,6 +71,7 @@ const defaultSettings: AppSettings = {
     allMonitorsHotkey: 'Alt+Delete',
     bufferToggleHotkey: 'Alt+F9',
     enabledMonitors: undefined,
+    openAtLogin: false,
 };
 
 class SettingsManager {
@@ -91,6 +95,7 @@ class SettingsManager {
         }
 
         this.initIPC();
+        this.applyLoginSettings();
     }
 
     private loadSettings(): AppSettings {
@@ -177,6 +182,9 @@ class SettingsManager {
     public setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]): AppSettings {
         this.settings[key] = value;
         this.saveSettings();
+        if (key === 'openAtLogin') {
+            this.applyLoginSettings();
+        }
         return { ...this.settings };
     }
 
@@ -187,6 +195,9 @@ class SettingsManager {
             }
         }
         this.saveSettings();
+        if ('openAtLogin' in settings) {
+            this.applyLoginSettings();
+        }
         return { ...this.settings };
     }
 
@@ -195,7 +206,19 @@ class SettingsManager {
         const currentPath = this.settings.recordingPath;
         this.settings = { ...defaultSettings, recordingPath: currentPath };
         this.saveSettings();
+        this.applyLoginSettings();
         return { ...this.settings };
+    }
+
+    private applyLoginSettings(): void {
+        if (!app.isPackaged) return; // Don't set login item in dev mode
+
+        const openAtLogin = this.settings.openAtLogin;
+
+        app.setLoginItemSettings({
+            openAtLogin: openAtLogin,
+            path: app.getPath('exe'),
+        });
     }
 }
 

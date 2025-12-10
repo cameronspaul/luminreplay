@@ -29,6 +29,7 @@ interface AppSettings {
     allMonitorsHotkey?: string;
     bufferToggleHotkey?: string;
     enabledMonitors?: number[];
+    openAtLogin?: boolean;
 }
 
 interface MonitorInfo {
@@ -255,6 +256,25 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             </div>
 
             <div className="settings-content">
+                {/* System Section */}
+                <section className="settings-section">
+                    <h2>System</h2>
+                    <div className="settings-row">
+                        <label>Open at Login</label>
+                        <div className="settings-input-group">
+                            <label className="settings-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={settings.openAtLogin || false}
+                                    onChange={(e) => handleChange('openAtLogin', e.target.checked)}
+                                />
+                                <span className="settings-switch-slider"></span>
+                            </label>
+                            <span className="settings-hint">Launch LuminReplay when you sign in to Windows</span>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Replay Buffer Section */}
                 <section className="settings-section">
                     <h2>Replay Buffer</h2>
