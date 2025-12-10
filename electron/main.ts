@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, shell, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, shell, screen, dialog } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -370,9 +370,37 @@ if (!gotTheLock) {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Initialize Settings first (so IPC handlers are ready)
   SettingsManager.getInstance()
+
+  // Check if OBS is available (checks for missing dependencies like VC++ Redist)
+  const obsManager = OBSManager.getInstance()
+  if (!obsManager.isOBSAvailable()) {
+    const result = await dialog.showMessageBox({
+      type: 'error',
+      title: 'Missing Dependencies',
+      message: 'LuminReplay Video Engine Failed to Load',
+      detail: 'The recording engine (OBS) could not be initialized.\n\nThis is usually because the "Visual C++ Redistributable" is missing from your system.\n\nWould you like to support us by installing the required components automatically?',
+      buttons: ['Install Dependencies', 'Ignore'],
+      defaultId: 0,
+      cancelId: 1,
+    })
+
+    if (result.response === 0) {
+      // Open the download link for VC++ Redistributable x64
+      await shell.openExternal('https://aka.ms/vs/17/release/vc_redist.x64.exe')
+
+      // Inform the user to restart
+      await dialog.showMessageBox({
+        type: 'info',
+        title: 'Restart Required',
+        message: 'Please Restart LuminReplay',
+        detail: 'After installing the redistributable, please restart LuminReplay to enable recording features.',
+        buttons: ['OK']
+      })
+    }
+  }
 
   // Create the main window (hidden)
   createWindow()
@@ -384,7 +412,9 @@ app.whenReady().then(() => {
   OBSManager.getInstance().initialize()
 
   // Show notification that buffer has started
-  showNotification('buffer-on')
+  if (OBSManager.getInstance().isOBSAvailable()) {
+    showNotification('buffer-on')
+  }
 
   // Function to register all hotkeys
   const registerGlobalHotkeys = () => {

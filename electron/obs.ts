@@ -19,11 +19,13 @@ const __dirname = path.dirname(__filename);
 // but let's try standard import or use createRequire if needed.
 // For now, assuming it works or we use a workaround.
 let obs: any;
+let obsError: Error | null = null;
 
 try {
     obs = require('obs-studio-node');
 } catch (e) {
     console.error("Failed to load obs-studio-node. Make sure it is installed and built.", e);
+    obsError = e as Error;
 }
 
 // Signal types from obs-studio-node
@@ -75,6 +77,14 @@ export class OBSManager {
             OBSManager.instance = new OBSManager();
         }
         return OBSManager.instance;
+    }
+
+    public isOBSAvailable(): boolean {
+        return !!obs;
+    }
+
+    public getOBSError(): Error | null {
+        return obsError;
     }
 
     private initIPC() {
