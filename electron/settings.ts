@@ -41,6 +41,7 @@ export interface AppSettings {
     monitor1Hotkey?: string;        // Direct save to monitor 1 (no overlay)
     monitor2Hotkey?: string;        // Direct save to monitor 2 (no overlay)
     allMonitorsHotkey?: string;     // Direct save all monitors separately (no overlay)
+    bufferToggleHotkey?: string;    // Hotkey to toggle replay buffer on/off
 
     // Monitors
     enabledMonitors?: number[]; // indices of enabled monitors. If undefined, all are enabled.
@@ -65,6 +66,7 @@ const defaultSettings: AppSettings = {
     monitor1Hotkey: 'Alt+F11',
     monitor2Hotkey: 'Alt+F12',
     allMonitorsHotkey: 'Alt+Delete',
+    bufferToggleHotkey: 'Alt+F9',
     enabledMonitors: undefined,
 };
 

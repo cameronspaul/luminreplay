@@ -754,6 +754,13 @@ export class OBSManager {
     }
 
     /**
+     * Public method to start replay buffer (for toggle functionality)
+     */
+    public startReplayBufferPublic() {
+        this.startReplayBuffer();
+    }
+
+    /**
      * Stop the OBS replay buffer
      */
     public stopReplayBuffer() {

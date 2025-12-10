@@ -239,7 +239,9 @@ img.logo-icon {
   box-shadow: 0 10px 25px rgba(241, 210, 137, 0.25);
 }
 
-.primary-button:active {}
+.primary-button:active {
+  transform: scale(0.98);
+}
 
 .secondary-button {
   background: rgba(255, 255, 255, 0.03);
@@ -266,4 +268,70 @@ img.logo-icon {
 
 .secondary-button:active {
   background: rgba(241, 210, 137, 0.05);
+}
+
+/* Toggle Button Styles */
+.toggle-button {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  padding: 1rem 2.5rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  backdrop-filter: blur(5px);
+}
+
+.toggle-button.active {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.toggle-button.active:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+.toggle-button.inactive {
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.toggle-button.inactive:hover {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: #22c55e;
+}
+
+/* Status Indicator States */
+.status-indicator.inactive {
+  background: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  animation: none;
+}
+
+/* Status Card Paused State */
+.status-card.paused {
+  border-color: rgba(239, 68, 68, 0.15);
+}
+
+.status-card.paused:hover {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Disabled Button State */
+.primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.primary-button:disabled:hover {
+  box-shadow: none;
 }

@@ -41,6 +41,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Save Replay
   saveReplay: () => ipcRenderer.invoke('save-replay'),
 
+  // Buffer toggle
+  toggleBuffer: () => ipcRenderer.invoke('toggle-buffer'),
+  getBufferStatus: () => ipcRenderer.invoke('get-buffer-status'),
+
   // Update hotkeys
   updateHotkey: () => ipcRenderer.invoke('update-hotkey'),
 

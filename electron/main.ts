@@ -59,7 +59,7 @@ function createWindow() {
 
 function createTray() {
   // Create tray icon - use PNG for Windows compatibility
-  const iconPath = path.join(process.env.VITE_PUBLIC, 'lumin.png')
+  const iconPath = path.join(process.env.VITE_PUBLIC, 'luminrecord.png')
 
   let trayIcon
   try {
@@ -168,7 +168,7 @@ function showOverlay() {
   })
 }
 
-function showNotification(type: 'recorded' | 'saved') {
+function showNotification(type: 'recorded' | 'saved' | 'buffer-on' | 'buffer-off') {
   // Close existing notification if any
   if (notificationWindow) {
     notificationWindow.close()
@@ -190,6 +190,8 @@ function showNotification(type: 'recorded' | 'saved') {
     y: margin,
     frame: false,
     transparent: true,
+    backgroundColor: '#00000000', // Ensure fully transparent background
+    show: false, // Don't show until ready
     alwaysOnTop: true,
     resizable: false,
     skipTaskbar: true,
@@ -201,6 +203,11 @@ function showNotification(type: 'recorded' | 'saved') {
 
   // Prevent the notification from being focused
   notificationWindow.setAlwaysOnTop(true, 'screen-saver')
+
+  // Show only when ready to avoid FOUC
+  notificationWindow.once('ready-to-show', () => {
+    notificationWindow?.show()
+  })
 
   if (VITE_DEV_SERVER_URL) {
     notificationWindow.loadURL(`${VITE_DEV_SERVER_URL}?notification=${type}`)
@@ -235,8 +242,8 @@ async function performReplaySave() {
     if (activeMonitors.length === 1) {
       // Single monitor - no processing needed, original file is already correct
       console.log("Single monitor detected/enabled. Replay saved directly (no processing needed).")
-      // Show the "Clip Recorded" notification for single monitor
-      showNotification('recorded')
+      // Show the "Clip Saved" notification immediately
+      showNotification('saved')
       return true
     } else {
       showOverlay()
@@ -255,15 +262,14 @@ async function performDirectMonitorSave(monitorIndex: number | 'all') {
 
     console.log(`Direct save triggered for monitor: ${monitorIndex}`)
 
-    // Show immediate notification that we're processing
-    showNotification('recorded')
+    // Show immediate notification that we're saving (skipping processing state)
+    showNotification('saved')
 
     // Process the replay in the background
     OBSManager.getInstance().processReplay(replayPath, monitorIndex)
       .then((result) => {
         console.log('Replay processed to:', result)
-        // Show "Clip Saved" notification after processing completes
-        showNotification('saved')
+        // No second notification needed
       })
       .catch((e) => {
         console.error('Error processing replay:', e)
@@ -274,6 +280,88 @@ async function performDirectMonitorSave(monitorIndex: number | 'all') {
     console.error('Failed to save replay for direct monitor save:', err)
     return false
   }
+}
+
+// Toggle replay buffer on/off
+function toggleReplayBuffer(): boolean {
+  const obsManager = OBSManager.getInstance()
+  const isRunning = obsManager.isReplayBufferRunning()
+
+  if (isRunning) {
+    console.log('Toggling replay buffer OFF')
+    obsManager.stopReplayBuffer()
+    showNotification('buffer-off')
+    updateTrayMenu(false)
+    return false
+  } else {
+    console.log('Toggling replay buffer ON')
+    obsManager.startReplayBufferPublic()
+    showNotification('buffer-on')
+    updateTrayMenu(true)
+    return true
+  }
+}
+
+// Update tray menu to reflect buffer state
+function updateTrayMenu(bufferActive: boolean) {
+  if (!tray) return
+
+  const settings = SettingsManager.getInstance().getAllSettings()
+  const toggleHotkey = settings.bufferToggleHotkey || 'Alt+F9'
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'LuminReplay',
+      enabled: false,
+    },
+    { type: 'separator' },
+    {
+      label: bufferActive ? '● Replay Buffer Active' : '○ Replay Buffer Paused',
+      enabled: false,
+    },
+    {
+      label: bufferActive ? `Pause Buffer (${toggleHotkey})` : `Resume Buffer (${toggleHotkey})`,
+      click: () => {
+        toggleReplayBuffer()
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Save Replay (Alt+F10)',
+      enabled: bufferActive,
+      click: async () => {
+        await performReplaySave()
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Settings',
+      click: () => {
+        if (win) {
+          win.show()
+          win.focus()
+        }
+      },
+    },
+    {
+      label: 'Open Recordings Folder',
+      click: () => {
+        const settings = SettingsManager.getInstance().getAllSettings()
+        shell.openPath(settings.recordingPath)
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        isQuitting = true
+        app.quit()
+      },
+    },
+  ])
+
+  tray.setContextMenu(contextMenu)
+  tray.setToolTip(bufferActive ? 'LuminReplay - Recording' : 'LuminReplay - Paused')
 }
 
 app.on('window-all-closed', () => {
@@ -380,6 +468,19 @@ app.whenReady().then(() => {
         console.log(`All Monitors hotkey ${settings.allMonitorsHotkey} registered successfully`)
       }
     }
+
+    // Buffer toggle hotkey
+    if (settings.bufferToggleHotkey) {
+      const ret = globalShortcut.register(settings.bufferToggleHotkey, () => {
+        console.log(`${settings.bufferToggleHotkey} is pressed - toggling buffer`)
+        toggleReplayBuffer()
+      })
+      if (!ret) {
+        console.log(`Hotkey registration failed for Buffer Toggle: ${settings.bufferToggleHotkey}`)
+      } else {
+        console.log(`Buffer Toggle hotkey ${settings.bufferToggleHotkey} registered successfully`)
+      }
+    }
   }
 
   // Register initially
@@ -400,6 +501,15 @@ app.whenReady().then(() => {
     return await performReplaySave()
   })
 
+  // Buffer toggle IPC handlers
+  ipcMain.handle('toggle-buffer', () => {
+    return toggleReplayBuffer()
+  })
+
+  ipcMain.handle('get-buffer-status', () => {
+    return OBSManager.getInstance().isReplayBufferRunning()
+  })
+
   ipcMain.handle('select-monitor', async (_event, index) => {
     if (!lastReplayPath) return
     console.log('Selected monitor:', index)
@@ -407,13 +517,15 @@ app.whenReady().then(() => {
     // Close the overlay immediately for better UX
     if (overlayWindow) overlayWindow.close()
 
+    // Show saved notification immediately
+    showNotification('saved')
+
     // Process the replay in the background
     const replayPath = lastReplayPath
     OBSManager.getInstance().processReplay(replayPath, index)
       .then((result) => {
         console.log('Replay processed to:', result)
-        // Show "Clip Saved" notification after processing completes
-        showNotification('saved')
+        // No second notification needed
       })
       .catch((e) => {
         console.error('Error processing replay:', e)

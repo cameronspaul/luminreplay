@@ -27,6 +27,7 @@ interface AppSettings {
     monitor1Hotkey?: string;
     monitor2Hotkey?: string;
     allMonitorsHotkey?: string;
+    bufferToggleHotkey?: string;
     enabledMonitors?: number[];
 }
 
@@ -239,7 +240,6 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <button onClick={onBack} className="settings-back-btn">
                     ← Back
                 </button>
-                <h1>Settings</h1>
             </div>
 
             <div className="settings-content">
@@ -828,6 +828,31 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 )}
                             </div>
                             <span className="settings-hint">Instantly save both monitors as separate files (no popup)</span>
+                        </div>
+                    </div>
+
+                    {/* Buffer Toggle Hotkey */}
+                    <div className="settings-row">
+                        <label>Toggle Buffer</label>
+                        <div className="settings-input-group">
+                            <div className="settings-hotkey-wrapper">
+                                <input
+                                    type="text"
+                                    value={recordingHotkeyField === 'bufferToggleHotkey' ? "Press any key..." : (settings.bufferToggleHotkey || '')}
+                                    readOnly
+                                    className={`settings-hotkey-display ${recordingHotkeyField === 'bufferToggleHotkey' ? 'recording' : ''}`}
+                                    onClick={() => setRecordingHotkeyField('bufferToggleHotkey')}
+                                    onKeyDown={(e) => handleHotkeyKeyDown(e, 'bufferToggleHotkey')}
+                                    onBlur={() => setRecordingHotkeyField(null)}
+                                    placeholder="Click to set hotkey"
+                                />
+                                {recordingHotkeyField === 'bufferToggleHotkey' && (
+                                    <div className="settings-hotkey-overlay" onClick={() => setRecordingHotkeyField(null)}>
+                                        Tap to cancel
+                                    </div>
+                                )}
+                            </div>
+                            <span className="settings-hint">Pause or resume the replay buffer</span>
                         </div>
                     </div>
                 </section>
