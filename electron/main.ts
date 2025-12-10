@@ -58,7 +58,7 @@ function createWindow() {
 
 function createTray() {
   // Create tray icon - use PNG for Windows compatibility
-  const iconPath = path.join(process.env.VITE_PUBLIC, 'tray-icon.png')
+  const iconPath = path.join(process.env.VITE_PUBLIC, 'lumin.png')
 
   let trayIcon
   try {
@@ -247,6 +247,34 @@ async function performReplaySave() {
   }
 }
 
+// Direct monitor save - bypasses the overlay and saves to a specific monitor directly
+async function performDirectMonitorSave(monitorIndex: number | 'all') {
+  try {
+    const replayPath = await OBSManager.getInstance().saveReplayBuffer() as string
+
+    console.log(`Direct save triggered for monitor: ${monitorIndex}`)
+
+    // Show immediate notification that we're processing
+    showNotification('recorded')
+
+    // Process the replay in the background
+    OBSManager.getInstance().processReplay(replayPath, monitorIndex)
+      .then((result) => {
+        console.log('Replay processed to:', result)
+        // Show "Clip Saved" notification after processing completes
+        showNotification('saved')
+      })
+      .catch((e) => {
+        console.error('Error processing replay:', e)
+      })
+
+    return true
+  } catch (err) {
+    console.error('Failed to save replay for direct monitor save:', err)
+    return false
+  }
+}
+
 app.on('window-all-closed', () => {
   // Don't quit on window close - we're a tray app
   // Only quit when explicitly requested
@@ -294,32 +322,71 @@ app.whenReady().then(() => {
   // Initialize OBS
   OBSManager.getInstance().initialize()
 
-  // Function to register hotkey
-  const registerGlobalHotkey = () => {
-    // Unregister all first to be safe (or track the specific one)
+  // Function to register all hotkeys
+  const registerGlobalHotkeys = () => {
+    // Unregister all first to be safe
     globalShortcut.unregisterAll()
 
     const settings = SettingsManager.getInstance().getAllSettings()
-    const hotkey = settings.replayHotkey || 'Alt+F10'
 
-    const ret = globalShortcut.register(hotkey, async () => {
-      console.log(`${hotkey} is pressed`)
+    // Main replay hotkey (shows overlay for multi-monitor)
+    const mainHotkey = settings.replayHotkey || 'Alt+F10'
+    const mainRet = globalShortcut.register(mainHotkey, async () => {
+      console.log(`${mainHotkey} is pressed - showing overlay`)
       await performReplaySave()
     })
-
-    if (!ret) {
-      console.log(`Hotkey registration failed for ${hotkey}`)
+    if (!mainRet) {
+      console.log(`Hotkey registration failed for main hotkey: ${mainHotkey}`)
     } else {
-      console.log(`Hotkey ${hotkey} registered successfully`)
+      console.log(`Main hotkey ${mainHotkey} registered successfully`)
+    }
+
+    // Monitor 1 direct save hotkey
+    if (settings.monitor1Hotkey) {
+      const ret = globalShortcut.register(settings.monitor1Hotkey, async () => {
+        console.log(`${settings.monitor1Hotkey} is pressed - direct save Monitor 1`)
+        await performDirectMonitorSave(0)
+      })
+      if (!ret) {
+        console.log(`Hotkey registration failed for Monitor 1: ${settings.monitor1Hotkey}`)
+      } else {
+        console.log(`Monitor 1 hotkey ${settings.monitor1Hotkey} registered successfully`)
+      }
+    }
+
+    // Monitor 2 direct save hotkey
+    if (settings.monitor2Hotkey) {
+      const ret = globalShortcut.register(settings.monitor2Hotkey, async () => {
+        console.log(`${settings.monitor2Hotkey} is pressed - direct save Monitor 2`)
+        await performDirectMonitorSave(1)
+      })
+      if (!ret) {
+        console.log(`Hotkey registration failed for Monitor 2: ${settings.monitor2Hotkey}`)
+      } else {
+        console.log(`Monitor 2 hotkey ${settings.monitor2Hotkey} registered successfully`)
+      }
+    }
+
+    // All monitors direct save hotkey
+    if (settings.allMonitorsHotkey) {
+      const ret = globalShortcut.register(settings.allMonitorsHotkey, async () => {
+        console.log(`${settings.allMonitorsHotkey} is pressed - direct save All Monitors`)
+        await performDirectMonitorSave('all')
+      })
+      if (!ret) {
+        console.log(`Hotkey registration failed for All Monitors: ${settings.allMonitorsHotkey}`)
+      } else {
+        console.log(`All Monitors hotkey ${settings.allMonitorsHotkey} registered successfully`)
+      }
     }
   }
 
   // Register initially
-  registerGlobalHotkey()
+  registerGlobalHotkeys()
 
-  // IPC Handler to update hotkey
+  // IPC Handler to update hotkeys
   ipcMain.handle('update-hotkey', () => {
-    registerGlobalHotkey()
+    registerGlobalHotkeys()
     return true
   })
 

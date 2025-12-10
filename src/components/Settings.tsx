@@ -24,6 +24,9 @@ interface AppSettings {
     captureDesktopAudio: boolean;
     captureMicrophone: boolean;
     replayHotkey: string;
+    monitor1Hotkey?: string;
+    monitor2Hotkey?: string;
+    allMonitorsHotkey?: string;
     enabledMonitors?: number[];
 }
 
@@ -45,7 +48,8 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const [isCustomDuration, setIsCustomDuration] = useState(false);
     const [isCustomBitrate, setIsCustomBitrate] = useState(false);
 
-    const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
+    // Track which hotkey is currently being recorded (null if none)
+    const [recordingHotkeyField, setRecordingHotkeyField] = useState<keyof AppSettings | null>(null);
 
     // Initialize custom mode based on loaded settings
     useEffect(() => {
@@ -128,14 +132,14 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         handleChange('enabledMonitors', next);
     };
 
-    const handleHotkeyKeyDown = (e: React.KeyboardEvent) => {
-        if (!isRecordingHotkey) return;
+    const handleHotkeyKeyDown = (e: React.KeyboardEvent, field: keyof AppSettings) => {
+        if (recordingHotkeyField !== field) return;
 
         e.preventDefault();
         e.stopPropagation();
 
         if (e.key === 'Escape') {
-            setIsRecordingHotkey(false);
+            setRecordingHotkeyField(null);
             return;
         }
 
@@ -161,8 +165,8 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         }
 
         const hotkey = [...modifiers, key].join('+');
-        handleChange('replayHotkey', hotkey);
-        setIsRecordingHotkey(false);
+        handleChange(field, hotkey as AppSettings[typeof field]);
+        setRecordingHotkeyField(null);
     };
 
     const handleSave = async () => {
@@ -648,7 +652,7 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                                 type="checkbox"
                                                 checked={!settings.enabledMonitors || settings.enabledMonitors.includes(m.index)}
                                                 onChange={(e) => handleMonitorToggle(m.index, e.target.checked)}
-                                                style={{ width: '18px', height: '18px', accentColor: '#6366f1' }}
+                                                style={{ width: '18px', height: '18px', accentColor: '#f1d289' }}
                                             />
                                             <span style={{ fontSize: '0.95rem', color: '#f3f4f6' }}>
                                                 Monitor {m.index + 1} ({m.width}x{m.height})
@@ -723,31 +727,107 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     </div>
                 </section>
 
-                {/* Hotkey Section */}
+                {/* Hotkeys Section */}
                 <section className="settings-section">
-                    <h2>Hotkey</h2>
+                    <h2>Hotkeys</h2>
 
+                    {/* Main Save Replay Hotkey (shows overlay) */}
                     <div className="settings-row">
-                        <label>Save Replay</label>
+                        <label>Save Replay (Select Monitor)</label>
                         <div className="settings-input-group">
                             <div className="settings-hotkey-wrapper">
                                 <input
                                     type="text"
-                                    value={isRecordingHotkey ? "Press any key..." : settings.replayHotkey}
+                                    value={recordingHotkeyField === 'replayHotkey' ? "Press any key..." : settings.replayHotkey}
                                     readOnly
-                                    className={`settings-hotkey-display ${isRecordingHotkey ? 'recording' : ''}`}
-                                    onClick={() => setIsRecordingHotkey(true)}
-                                    onKeyDown={handleHotkeyKeyDown}
-                                    onBlur={() => setIsRecordingHotkey(false)}
+                                    className={`settings-hotkey-display ${recordingHotkeyField === 'replayHotkey' ? 'recording' : ''}`}
+                                    onClick={() => setRecordingHotkeyField('replayHotkey')}
+                                    onKeyDown={(e) => handleHotkeyKeyDown(e, 'replayHotkey')}
+                                    onBlur={() => setRecordingHotkeyField(null)}
                                     placeholder="Click to set hotkey"
                                 />
-                                {isRecordingHotkey && (
-                                    <div className="settings-hotkey-overlay" onClick={() => setIsRecordingHotkey(false)}>
+                                {recordingHotkeyField === 'replayHotkey' && (
+                                    <div className="settings-hotkey-overlay" onClick={() => setRecordingHotkeyField(null)}>
                                         Tap to cancel
                                     </div>
                                 )}
                             </div>
-                            <span className="settings-hint">Click to record a new hotkey (e.g. Alt+F10)</span>
+                            <span className="settings-hint">Shows monitor selection popup (for multi-monitor)</span>
+                        </div>
+                    </div>
+
+                    {/* Monitor 1 Direct Save Hotkey */}
+                    <div className="settings-row">
+                        <label>Save Monitor 1</label>
+                        <div className="settings-input-group">
+                            <div className="settings-hotkey-wrapper">
+                                <input
+                                    type="text"
+                                    value={recordingHotkeyField === 'monitor1Hotkey' ? "Press any key..." : (settings.monitor1Hotkey || '')}
+                                    readOnly
+                                    className={`settings-hotkey-display ${recordingHotkeyField === 'monitor1Hotkey' ? 'recording' : ''}`}
+                                    onClick={() => setRecordingHotkeyField('monitor1Hotkey')}
+                                    onKeyDown={(e) => handleHotkeyKeyDown(e, 'monitor1Hotkey')}
+                                    onBlur={() => setRecordingHotkeyField(null)}
+                                    placeholder="Click to set hotkey"
+                                />
+                                {recordingHotkeyField === 'monitor1Hotkey' && (
+                                    <div className="settings-hotkey-overlay" onClick={() => setRecordingHotkeyField(null)}>
+                                        Tap to cancel
+                                    </div>
+                                )}
+                            </div>
+                            <span className="settings-hint">Instantly save only Monitor 1 (no popup)</span>
+                        </div>
+                    </div>
+
+                    {/* Monitor 2 Direct Save Hotkey */}
+                    <div className="settings-row">
+                        <label>Save Monitor 2</label>
+                        <div className="settings-input-group">
+                            <div className="settings-hotkey-wrapper">
+                                <input
+                                    type="text"
+                                    value={recordingHotkeyField === 'monitor2Hotkey' ? "Press any key..." : (settings.monitor2Hotkey || '')}
+                                    readOnly
+                                    className={`settings-hotkey-display ${recordingHotkeyField === 'monitor2Hotkey' ? 'recording' : ''}`}
+                                    onClick={() => setRecordingHotkeyField('monitor2Hotkey')}
+                                    onKeyDown={(e) => handleHotkeyKeyDown(e, 'monitor2Hotkey')}
+                                    onBlur={() => setRecordingHotkeyField(null)}
+                                    placeholder="Click to set hotkey"
+                                />
+                                {recordingHotkeyField === 'monitor2Hotkey' && (
+                                    <div className="settings-hotkey-overlay" onClick={() => setRecordingHotkeyField(null)}>
+                                        Tap to cancel
+                                    </div>
+                                )}
+                            </div>
+                            <span className="settings-hint">Instantly save only Monitor 2 (no popup)</span>
+                        </div>
+                    </div>
+
+                    {/* All Monitors Direct Save Hotkey */}
+                    <div className="settings-row">
+                        <label>Save Both Monitors</label>
+                        <div className="settings-input-group">
+                            <div className="settings-hotkey-wrapper">
+                                <input
+                                    type="text"
+                                    value={recordingHotkeyField === 'allMonitorsHotkey' ? "Press any key..." : (settings.allMonitorsHotkey || '')}
+                                    readOnly
+                                    className={`settings-hotkey-display ${recordingHotkeyField === 'allMonitorsHotkey' ? 'recording' : ''}`}
+                                    onClick={() => setRecordingHotkeyField('allMonitorsHotkey')}
+                                    onKeyDown={(e) => handleHotkeyKeyDown(e, 'allMonitorsHotkey')}
+                                    onBlur={() => setRecordingHotkeyField(null)}
+                                    placeholder="Click to set hotkey"
+                                />
+                                {recordingHotkeyField === 'allMonitorsHotkey' && (
+                                    <div className="settings-hotkey-overlay" onClick={() => setRecordingHotkeyField(null)}>
+                                        Tap to cancel
+                                    </div>
+                                )}
+                            </div>
+                            <span className="settings-hint">Instantly save both monitors as separate files (no popup)</span>
                         </div>
                     </div>
                 </section>

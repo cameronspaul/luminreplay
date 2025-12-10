@@ -3380,6 +3380,9 @@ const defaultSettings = {
   captureDesktopAudio: true,
   captureMicrophone: true,
   replayHotkey: "Alt+F10",
+  monitor1Hotkey: "Alt+F11",
+  monitor2Hotkey: "Alt+F12",
+  allMonitorsHotkey: "Alt+Delete",
   enabledMonitors: void 0
 };
 const _SettingsManager = class _SettingsManager {
@@ -4224,7 +4227,7 @@ function createWindow() {
   }
 }
 function createTray() {
-  const iconPath = path$3.join(process.env.VITE_PUBLIC, "tray-icon.png");
+  const iconPath = path$3.join(process.env.VITE_PUBLIC, "lumin.png");
   let trayIcon;
   try {
     trayIcon = nativeImage.createFromPath(iconPath);
@@ -4380,6 +4383,23 @@ async function performReplaySave() {
     return false;
   }
 }
+async function performDirectMonitorSave(monitorIndex) {
+  try {
+    const replayPath = await OBSManager.getInstance().saveReplayBuffer();
+    console.log(`Direct save triggered for monitor: ${monitorIndex}`);
+    showNotification("recorded");
+    OBSManager.getInstance().processReplay(replayPath, monitorIndex).then((result) => {
+      console.log("Replay processed to:", result);
+      showNotification("saved");
+    }).catch((e) => {
+      console.error("Error processing replay:", e);
+    });
+    return true;
+  } catch (err) {
+    console.error("Failed to save replay for direct monitor save:", err);
+    return false;
+  }
+}
 app.on("window-all-closed", () => {
 });
 app.on("will-quit", () => {
@@ -4407,23 +4427,56 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   OBSManager.getInstance().initialize();
-  const registerGlobalHotkey = () => {
+  const registerGlobalHotkeys = () => {
     globalShortcut.unregisterAll();
     const settings = SettingsManager.getInstance().getAllSettings();
-    const hotkey = settings.replayHotkey || "Alt+F10";
-    const ret = globalShortcut.register(hotkey, async () => {
-      console.log(`${hotkey} is pressed`);
+    const mainHotkey = settings.replayHotkey || "Alt+F10";
+    const mainRet = globalShortcut.register(mainHotkey, async () => {
+      console.log(`${mainHotkey} is pressed - showing overlay`);
       await performReplaySave();
     });
-    if (!ret) {
-      console.log(`Hotkey registration failed for ${hotkey}`);
+    if (!mainRet) {
+      console.log(`Hotkey registration failed for main hotkey: ${mainHotkey}`);
     } else {
-      console.log(`Hotkey ${hotkey} registered successfully`);
+      console.log(`Main hotkey ${mainHotkey} registered successfully`);
+    }
+    if (settings.monitor1Hotkey) {
+      const ret = globalShortcut.register(settings.monitor1Hotkey, async () => {
+        console.log(`${settings.monitor1Hotkey} is pressed - direct save Monitor 1`);
+        await performDirectMonitorSave(0);
+      });
+      if (!ret) {
+        console.log(`Hotkey registration failed for Monitor 1: ${settings.monitor1Hotkey}`);
+      } else {
+        console.log(`Monitor 1 hotkey ${settings.monitor1Hotkey} registered successfully`);
+      }
+    }
+    if (settings.monitor2Hotkey) {
+      const ret = globalShortcut.register(settings.monitor2Hotkey, async () => {
+        console.log(`${settings.monitor2Hotkey} is pressed - direct save Monitor 2`);
+        await performDirectMonitorSave(1);
+      });
+      if (!ret) {
+        console.log(`Hotkey registration failed for Monitor 2: ${settings.monitor2Hotkey}`);
+      } else {
+        console.log(`Monitor 2 hotkey ${settings.monitor2Hotkey} registered successfully`);
+      }
+    }
+    if (settings.allMonitorsHotkey) {
+      const ret = globalShortcut.register(settings.allMonitorsHotkey, async () => {
+        console.log(`${settings.allMonitorsHotkey} is pressed - direct save All Monitors`);
+        await performDirectMonitorSave("all");
+      });
+      if (!ret) {
+        console.log(`Hotkey registration failed for All Monitors: ${settings.allMonitorsHotkey}`);
+      } else {
+        console.log(`All Monitors hotkey ${settings.allMonitorsHotkey} registered successfully`);
+      }
     }
   };
-  registerGlobalHotkey();
+  registerGlobalHotkeys();
   ipcMain.handle("update-hotkey", () => {
-    registerGlobalHotkey();
+    registerGlobalHotkeys();
     return true;
   });
   ipcMain.handle("get-monitors", () => {

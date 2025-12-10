@@ -36,8 +36,11 @@ export interface AppSettings {
     captureDesktopAudio: boolean;
     captureMicrophone: boolean;
 
-    // Hotkey
-    replayHotkey: string;
+    // Hotkeys
+    replayHotkey: string;           // Main hotkey that shows the monitor selection overlay
+    monitor1Hotkey?: string;        // Direct save to monitor 1 (no overlay)
+    monitor2Hotkey?: string;        // Direct save to monitor 2 (no overlay)
+    allMonitorsHotkey?: string;     // Direct save all monitors separately (no overlay)
 
     // Monitors
     enabledMonitors?: number[]; // indices of enabled monitors. If undefined, all are enabled.
@@ -59,6 +62,9 @@ const defaultSettings: AppSettings = {
     captureDesktopAudio: true,
     captureMicrophone: true,
     replayHotkey: 'Alt+F10',
+    monitor1Hotkey: 'Alt+F11',
+    monitor2Hotkey: 'Alt+F12',
+    allMonitorsHotkey: 'Alt+Delete',
     enabledMonitors: undefined,
 };
 

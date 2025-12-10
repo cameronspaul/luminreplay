@@ -2,13 +2,13 @@
     width: 100vw;
     height: 100vh;
     background: radial-gradient(circle at top center, #1a1c23 0%, #0d0e11 100%);
-    color: #f3f4f6;
+    color: var(--text-main);
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
     gap: 1.5rem;
-    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     user-select: none;
     padding: 2rem 1.5rem;
     box-sizing: border-box;
@@ -24,6 +24,13 @@
     text-align: center;
     animation: fadeInDown 0.5s ease-out;
     flex-shrink: 0;
+}
+
+.overlay-title span {
+    background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .overlay-monitors-grid {
@@ -51,11 +58,11 @@
 }
 
 .overlay-monitors-grid::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(241, 210, 137, 0.3);
 }
 
 .monitor-card {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-card);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     padding: 1rem 1.25rem;
@@ -72,12 +79,10 @@
 }
 
 .monitor-card:hover {
-    border-color: rgba(74, 222, 128, 0.5);
+    border-color: rgba(241, 210, 137, 0.5);
     background: rgba(255, 255, 255, 0.06);
-    box-shadow: 0 4px 15px rgba(74, 222, 128, 0.1);
+    box-shadow: 0 4px 15px rgba(241, 210, 137, 0.15);
 }
-
-
 
 .monitor-name {
     font-size: 1rem;
@@ -90,17 +95,18 @@
 
 .monitor-res {
     font-size: 0.85rem;
-    color: #9ca3af;
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    color: var(--text-muted);
+    font-family: 'Consolas', monospace;
     background: rgba(0, 0, 0, 0.3);
     padding: 4px 8px;
     border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .overlay-cancel-btn {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
     padding: 0.85rem;
     width: 100%;
     border-radius: 8px;
@@ -113,19 +119,17 @@
 }
 
 .overlay-cancel-btn:hover {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: #ef4444;
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #f3f4f6;
 }
 
 @keyframes fadeInDown {
     from {
         opacity: 0;
-        transform: translateY(-20px);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
     }
 }

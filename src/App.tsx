@@ -28,8 +28,8 @@ function App() {
     <div className="main-container">
       <div className="main-content">
         <div className="logo-section">
-          <div className="logo-icon"></div>
-          <h1 className="app-title">LuminReplay</h1>
+          <img src="/lumin.svg" alt="LuminReplay Logo" className="logo-icon" />
+          <h1 className="app-title">Lumin<span>Replay</span></h1>
           <p className="app-subtitle">Multi-Monitor Replay Buffer</p>
         </div>
 
@@ -37,18 +37,10 @@ function App() {
           <div className="status-indicator active"></div>
           <div className="status-text">
             <span className="status-label">Replay Buffer</span>
-            <span className="status-value">Active</span>
+            <span className="status-value">Active - Monitoring</span>
           </div>
+          <i className="ph ph-broadcast" style={{ fontSize: '1.5rem', color: 'var(--gold-light)', opacity: 0.8 }}></i>
         </div>
-
-        <div className="hotkey-card">
-          <div className="hotkey-icon"></div>
-          <div className="hotkey-info">
-            <span className="hotkey-label">Save Replay</span>
-            <kbd className="hotkey-key">Alt + F10</kbd>
-          </div>
-        </div>
-
         <div className="button-group">
           <button
             className="primary-button"
@@ -57,12 +49,14 @@ function App() {
               window.electronAPI.saveReplay()
             }}
           >
+            <i className="ph ph-floppy-disk" style={{ marginRight: '8px' }}></i>
             Save Replay
           </button>
           <button
             className="secondary-button"
             onClick={() => setShowSettings(true)}
           >
+            <i className="ph ph-gear" style={{ marginRight: '8px' }}></i>
             Settings
           </button>
         </div>
