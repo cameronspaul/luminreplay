@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description"
+        content="LuminReplay - Professional multi-monitor replay buffer for Windows. Capture gameplay across all displays with a single hotkey. Built with OBS technology and NVENC encoding." />
+    <title>LuminReplay | Multi-Monitor Replay Buffer</title>
+    <link rel="icon" type="image/svg+xml" href="public/lumin.svg" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        /* ===============================================
+       LuminReplay Home Page Styles
+       Design System: Dark theme with gold accents
+       =============================================== */
+
+        :root {
+            /* Brand Colors */
+            --gold-light: #f1d289;
+            --gold-dark: #dfb66b;
+            --gold-glow: rgba(241, 210, 137, 0.15);
+
+            /* Backgrounds */
+            --bg-dark: #0a0a0a;
+            --bg-card: #141414;
+            --bg-elevated: #1a1a1a;
+
+            /* Text */
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --text-subtle: #6b6b6b;
+
+            /* Status */
+            --green: #22c55e;
+            --red: #ef4444;
+
+            /* Effects */
+            --glow: 0 0 25px rgba(241, 210, 137, 0.15);
+            --border-glow: 1px solid rgba(241, 210, 137, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            font-weight: 400;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(241, 210, 137, 0.25);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gold-light);
+        }
+
+        /* ===============================================
+       HERO SECTION
+       =============================================== */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 2rem;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* Background radial glow */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(circle at center, rgba(223, 182, 107, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* Floating particles */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--gold-light);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float-particle 15s infinite ease-in-out;
+        }
+
+        .particle:nth-child(1) {
+            left: 10%;
+            top: 20%;
+            animation-delay: 0s;
+        }
+
+        .particle:nth-child(2) {
+            left: 20%;
+            top: 80%;
+            animation-delay: 2s;
+        }
+
+        .particle:nth-child(3) {
+            left: 40%;
+            top: 40%;
+            animation-delay: 4s;
+        }
+
+        .particle:nth-child(4) {
+            left: 60%;
+            top: 70%;
+            animation-delay: 1s;
+        }
+
+        .particle:nth-child(5) {
+            left: 80%;
+            top: 30%;
+            animation-delay: 3s;
+        }
+
+        .particle:nth-child(6) {
+            left: 90%;
+            top: 60%;
+            animation-delay: 5s;
+        }
+
+        .particle:nth-child(7) {
+            left: 30%;
+            top: 10%;
+            animation-delay: 2.5s;
+        }
+
+        .particle:nth-child(8) {
+            left: 70%;
+            top: 90%;
+            animation-delay: 3.5s;
+        }
+
+        @keyframes float-particle {
+
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 0.3;
+            }
+
+            50% {
+                transform: translateY(-100px) scale(1.5);
+                opacity: 0.6;
+            }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            width: 140px;
+            height: 140px;
+            margin-bottom: 2rem;
+            border-radius: 50%;
+            border: 1px solid rgba(241, 210, 137, 0.1);
+            box-shadow: 0 0 60px rgba(241, 210, 137, 0.08);
+            animation: pulse-glow 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 60px rgba(241, 210, 137, 0.08);
+            }
+
+            50% {
+                box-shadow: 0 0 80px rgba(241, 210, 137, 0.15);
+            }
+        }
+
+        .hero-title {
+            font-size: clamp(3rem, 8vw, 5rem);
+            font-weight: 800;
+            letter-spacing: -2px;
+            margin-bottom: 1rem;
+            line-height: 1.1;
+        }
+
+        .hero-title span {
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.1rem, 3vw, 1.4rem);
+            color: var(--text-muted);
+            font-weight: 300;
+            margin: 0 auto 3rem auto;
+            max-width: 600px;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            border: none;
+            color: #000;
+            padding: 1rem 2.5rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 10px 40px rgba(241, 210, 137, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(241, 210, 137, 0.2);
+            color: var(--gold-light);
+            padding: 1rem 2.5rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(241, 210, 137, 0.1);
+            border-color: var(--gold-light);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+        }
+
+        .scroll-indicator i {
+            font-size: 2rem;
+            color: var(--gold-light);
+            opacity: 0.5;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            40% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+
+            60% {
+                transform: translateX(-50%) translateY(-5px);
+            }
+        }
+
+        /* ===============================================
+       SECTION STYLES
+       =============================================== */
+        section {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-title h2 {
+            font-size: clamp(2rem, 5vw, 2.8rem);
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .section-title h2 span {
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-title p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ===============================================
+       FEATURES SECTION
+       =============================================== */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(241, 210, 137, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            background: rgba(241, 210, 137, 0.1);
+            border: 1px solid rgba(241, 210, 137, 0.2);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            color: var(--gold-light);
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        /* ===============================================
+       HOW IT WORKS SECTION
+       =============================================== */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .step {
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            color: #000;
+            font-size: 1.5rem;
+            font-weight: 800;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 10px 30px rgba(241, 210, 137, 0.2);
+        }
+
+        .step h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .step p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* ===============================================
+       HOTKEYS SHOWCASE
+       =============================================== */
+        .hotkeys-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .hotkey-item {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .hotkey-item:hover {
+            border-color: rgba(241, 210, 137, 0.2);
+        }
+
+        .hotkey-icon {
+            font-size: 1.5rem;
+            color: var(--gold-light);
+            width: 40px;
+            text-align: center;
+        }
+
+        .hotkey-info {
+            flex: 1;
+        }
+
+        .hotkey-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .hotkey-action {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .hotkey-key {
+            background: rgba(241, 210, 137, 0.1);
+            color: var(--gold-light);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(241, 210, 137, 0.2);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* ===============================================
+       SPECS / TECH SECTION
+       =============================================== */
+        .specs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .spec-item {
+            text-align: center;
+            padding: 2rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .spec-item:hover {
+            border-color: rgba(241, 210, 137, 0.15);
+        }
+
+        .spec-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .spec-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* ===============================================
+       DEMO PREVIEW
+       =============================================== */
+        .demo-container {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 24px;
+            padding: 2rem;
+            margin-top: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-window {
+            background: var(--bg-dark);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .demo-titlebar {
+            background: #1a1a1a;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .demo-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .demo-dot.red {
+            background: #ef4444;
+        }
+
+        .demo-dot.yellow {
+            background: #eab308;
+        }
+
+        .demo-dot.green {
+            background: #22c55e;
+        }
+
+        .demo-content {
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .demo-logo-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .demo-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 1rem;
+        }
+
+        .demo-title {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .demo-title span {
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .demo-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 1rem 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        .demo-status-main {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .demo-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2), 0 0 15px var(--green);
+            animation: demo-pulse 2s infinite;
+        }
+
+        @keyframes demo-pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .demo-status-text {
+            text-align: left;
+        }
+
+        .demo-status-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .demo-status-value {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .demo-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .demo-btn-primary {
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            border: none;
+            color: #000;
+            padding: 0.875rem 2rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .demo-btn-secondary {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(241, 210, 137, 0.2);
+            color: var(--gold-light);
+            padding: 0.875rem 2rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        /* ===============================================
+       FOOTER
+       =============================================== */
+        footer {
+            text-align: center;
+            padding: 4rem 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .footer-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 1.5rem;
+            opacity: 0.8;
+        }
+
+        footer h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        footer h3 span {
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--gold-light);
+        }
+
+        .copyright {
+            margin-top: 3rem;
+            color: var(--text-subtle);
+            font-size: 0.85rem;
+        }
+
+        /* ===============================================
+       RESPONSIVE
+       =============================================== */
+        @media (max-width: 768px) {
+            .hero-cta {
+                flex-direction: column;
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .btn-primary,
+            .btn-secondary {
+                width: 100%;
+                justify-content: center;
+            }
+
+            section {
+                padding: 4rem 1.5rem;
+            }
+
+            .features-grid,
+            .hotkeys-grid,
+            .specs-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .logo {
+                width: 100px;
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ===============================================
+       HERO SECTION
+       =============================================== -->
+    <section class="hero">
+        <div class="particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+
+        <div class="hero-content">
+            <img src="public/lumin.png" alt="LuminReplay Logo" class="logo" />
+            <h1 class="hero-title">Lumin<span>Replay</span></h1>
+            <p class="hero-subtitle">
+                Professional multi-monitor replay buffer for Windows.
+                Capture epic gaming moments across all your displays with a single hotkey.
+            </p>
+            <div class="hero-cta">
+                <a href="#download" class="btn-secondary">
+                    <i class="ph ph-download-simple"></i>
+                    Download Now
+                </a>
+                <a href="https://github.com/yourusername/luminreplay" target="_blank" class="btn-secondary">
+                    <i class="ph ph-github-logo"></i>
+                    View on GitHub
+                </a>
+                <a href="https://buymeacoffee.com/cameronpaul" target="_blank" class="btn-secondary">
+                    <i class="ph ph-coffee"></i>
+                    Buy me a coffee
+                </a>
+            </div>
+        </div>
+
+        <div class="scroll-indicator">
+            <i class="ph ph-caret-down"></i>
+        </div>
+    </section>
+
+    <!-- ===============================================
+       FEATURES SECTION
+       =============================================== -->
+    <section id="features">
+        <div class="section-title">
+            <h2>Powerful <span>Features</span></h2>
+            <p>Everything you need for seamless gameplay capture across multiple monitors.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="ph ph-monitor"></i>
+                </div>
+                <h3>Multi-Monitor Capture</h3>
+                <p>Capture gameplay across all connected displays simultaneously as a mega-canvas. Choose to save
+                    individual monitors or all at once.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="ph ph-keyboard"></i>
+                </div>
+                <h3>Global Hotkeys</h3>
+                <p>Save replays instantly with customizable global hotkeys. Direct monitor hotkeys let you skip the
+                    overlay entirely for lightning-fast saves.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="ph ph-lightning"></i>
+                </div>
+                <h3>NVENC Encoding</h3>
+                <p>Hardware-accelerated encoding using NVIDIA NVENC keeps CPU and GPU usage minimal while maintaining
+                    excellent video quality.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="ph ph-scissors"></i>
+                </div>
+                <h3>Smart Cropping</h3>
+                <p>Automatic per-monitor splitting using FFmpeg. Save the exact display you want without any manual
+                    editing.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="ph ph-sliders-horizontal"></i>
+                </div>
+                <h3>Flexible Settings</h3>
+                <p>Full control over buffer length, bitrate, FPS, resolution, audio sources, encoder, and output format.
+                    Tune it to your exact needs.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="ph ph-tray"></i>
+                </div>
+                <h3>System Tray Integration</h3>
+                <p>Runs quietly in your system tray with quick access to buffer controls, save replay, open recordings,
+                    and settings.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+       HOW IT WORKS
+       =============================================== -->
+    <section>
+        <div class="section-title">
+            <h2>How It <span>Works</span></h2>
+            <p>Simple workflow designed for gamers who want to capture highlights effortlessly.</p>
+        </div>
+
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Start Buffer</h3>
+                <p>Launch LuminReplay and the replay buffer starts automatically, continuously recording your gameplay.
+                </p>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>Hit Your Hotkey</h3>
+                <p>When something epic happens, press your save hotkey. The overlay appears to select which monitor to
+                    save.</p>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Get Your Clip</h3>
+                <p>Your replay is automatically cropped and saved to your designated folder. Share it instantly!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+       HOTKEYS SHOWCASE
+       =============================================== -->
+    <section>
+        <div class="section-title">
+            <h2>Default <span>Hotkeys</span></h2>
+            <p>All hotkeys are fully customizable in settings.</p>
+        </div>
+
+        <div class="hotkeys-grid">
+            <div class="hotkey-item">
+                <div class="hotkey-icon">
+                    <i class="ph ph-layout"></i>
+                </div>
+                <div class="hotkey-info">
+                    <div class="hotkey-label">Main Overlay</div>
+                    <div class="hotkey-action">Open Monitor Picker</div>
+                </div>
+                <div class="hotkey-key">Alt + F10</div>
+            </div>
+
+            <div class="hotkey-item">
+                <div class="hotkey-icon">
+                    <i class="ph ph-number-square-one"></i>
+                </div>
+                <div class="hotkey-info">
+                    <div class="hotkey-label">Quick Save</div>
+                    <div class="hotkey-action">Save Monitor 1</div>
+                </div>
+                <div class="hotkey-key">Alt + F11</div>
+            </div>
+
+            <div class="hotkey-item">
+                <div class="hotkey-icon">
+                    <i class="ph ph-number-square-two"></i>
+                </div>
+                <div class="hotkey-info">
+                    <div class="hotkey-label">Quick Save</div>
+                    <div class="hotkey-action">Save Monitor 2</div>
+                </div>
+                <div class="hotkey-key">Alt + F12</div>
+            </div>
+
+            <div class="hotkey-item">
+                <div class="hotkey-icon">
+                    <i class="ph ph-squares-four"></i>
+                </div>
+                <div class="hotkey-info">
+                    <div class="hotkey-label">Save All</div>
+                    <div class="hotkey-action">All Monitors Split</div>
+                </div>
+                <div class="hotkey-key">Alt + Delete</div>
+            </div>
+
+            <div class="hotkey-item">
+                <div class="hotkey-icon">
+                    <i class="ph ph-pause-circle"></i>
+                </div>
+                <div class="hotkey-info">
+                    <div class="hotkey-label">Toggle</div>
+                    <div class="hotkey-action">Pause / Resume Buffer</div>
+                </div>
+                <div class="hotkey-key">Alt + F9</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+       SPECS
+       =============================================== -->
+    <section>
+        <div class="section-title">
+            <h2>Built for <span>Performance</span></h2>
+            <p>Powered by OBS Studio technology for reliability and efficiency.</p>
+        </div>
+
+        <div class="specs-grid">
+            <div class="spec-item">
+                <div class="spec-value">4K</div>
+                <div class="spec-label">Max Resolution</div>
+            </div>
+            <div class="spec-item">
+                <div class="spec-value">120</div>
+                <div class="spec-label">FPS Support</div>
+            </div>
+
+            <div class="spec-item">
+                <div class="spec-value">∞</div>
+                <div class="spec-label">Monitors</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===============================================
+       DOWNLOAD CTA
+       =============================================== -->
+    <section id="download">
+        <div class="section-title">
+            <h2>Ready to <span>Capture?</span></h2>
+            <p>Download LuminReplay and never miss an epic moment again.</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="#" class="btn-primary" style="font-size: 1.1rem; padding: 1.25rem 3rem;">
+                <i class="ph ph-windows-logo"></i>
+                Download for Windows
+            </a>
+            <p style="color: var(--text-muted); margin-top: 1.5rem; font-size: 0.9rem;">
+                Requires Windows 10+, NVIDIA GPU recommended for NVENC
+            </p>
+        </div>
+    </section>
+
+    <!-- ===============================================
+       FOOTER
+       =============================================== -->
+    <footer>
+        <img src="public/lumin.png" alt="LuminReplay" class="footer-logo" />
+        <h3>Lumin<span>Replay</span></h3>
+        <p>Multi-Monitor Replay Buffer for Windows</p>
+
+        <div class="footer-links">
+            <a href="#features">Features</a>
+            <a href="#demo">Preview</a>
+            <a href="#download">Download</a>
+            <a href="https://github.com" target="_blank">GitHub</a>
+        </div>
+
+        <p class="copyright">
+            © 2024 LuminReplay. Built with Electron, React, and OBS Studio Node.
+        </p>
+    </footer>
+</body>
+
+</html>
