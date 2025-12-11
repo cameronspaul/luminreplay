@@ -7,7 +7,12 @@ LuminReplay is an Electron + React desktop app that runs a ShadowPlay-style repl
 - Global hotkeys for main overlay, per-monitor quick saves, and buffer toggle (defaults: Alt+F10 main, Alt+F11/Alt+F12 per-monitor, Alt+Delete all, Alt+F9 toggle).
 - Replay buffer controls, notifications, and tray menu with quick actions.
 - Settings for buffer length/size, bitrate, encoder (NVENC or x264), FPS, capture/output resolution (native/presets/custom), audio sources, formats, save path, and enabled monitors.
-- Automatic recording folder under your Videos directory on first run.
+
+## Demo
+[Watch the Demo Video](docs/public/example.mp4)
+
+> **Note:** For a live preview, visit our [website](https://cameronpaul.github.io/luminreplay/).
+
 
 ## Requirements
 - Node.js 18+ and npm.

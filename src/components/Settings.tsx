@@ -586,7 +586,7 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 {/* Capture Resolution */}
                                 <div className="settings-resolution-wrapper">
                                     <div className="settings-resolution-label">
-                                        <span className="resolution-type">📹 Capture Resolution</span>
+                                        <span className="resolution-type">Capture Resolution</span>
                                     </div>
                                     <div className="settings-resolution-presets">
                                         {resolutionPresets.map(preset => (
@@ -631,7 +631,7 @@ const Settings: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 {/* Output Resolution */}
                                 <div className="settings-resolution-wrapper">
                                     <div className="settings-resolution-label">
-                                        <span className="resolution-type">💾 Output Resolution</span>
+                                        <span className="resolution-type">Output Resolution</span>
                                     </div>
                                     <div className="settings-resolution-presets">
                                         {resolutionPresets.map(preset => (
