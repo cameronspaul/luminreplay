@@ -9,9 +9,9 @@ LuminReplay is an Electron + React desktop app that runs a ShadowPlay-style repl
 - Settings for buffer length/size, bitrate, encoder (NVENC or x264), FPS, capture/output resolution (native/presets/custom), audio sources, formats, save path, and enabled monitors.
 
 ## Demo
-<video src="docs/public/example.mp4" controls autoplay loop muted style="width: 100%;"></video>
+[![Watch the Demo](docs/public/lumin.png)](docs/public/example.mp4)
 
-> **Note:** If the video above doesn't play, you can [download it here](docs/public/example.mp4) or view it on our [website](https://cameronpaul.github.io/luminreplay/).
+> **Note:** Click the image above to watch the demo video. You can also view it on our [website](https://cameronpaul.github.io/luminreplay/).
 
 
 ## Requirements
